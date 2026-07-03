@@ -1,76 +1,302 @@
-# NovaMart -- Sales Intelligence Dashboard
+# 📊 NovaMart Sales Dashboard
 
-A production-ready Streamlit foundation for NovaMart's internal sales
-intelligence dashboard, built with clean architecture, modular code,
-and a professional blue business theme.
+> **A professional Business Intelligence Dashboard built with Python, Streamlit and Plotly.**
 
-## Features
+NovaMart transforms raw sales data into interactive dashboards, executive analytics and business insights through a clean, modular and scalable architecture.
 
-- Home page with company branding, KPI section, and chart section
-- Sidebar navigation across Dashboard, Sales, Products, Customers, and Reports
-- Placeholder pages ready for data integration
-- Clean separation of UI, business logic, configuration, and data access
-- Reusable components (sidebar, header, footer)
-- Unit-tested calculation and formatting utilities
+---
 
-## Requirements
+## 🚀 Project Overview
 
-- Python 3.14+
-- pip
+NovaMart is a portfolio-grade Business Intelligence application designed to demonstrate professional software engineering practices while delivering meaningful sales analytics.
 
-## Getting Started
+Users can upload CSV or Excel files and instantly explore their business through dynamic KPIs, interactive filters, executive analytics and automated business insights.
+
+---
+
+## ✨ Features
+
+### 📂 Data Management
+
+- ✅ CSV Upload
+- ✅ Excel Upload
+- ✅ Automatic Data Validation
+- ✅ Error Handling
+- ✅ Missing Value Processing
+
+### 📊 Analytics
+
+- ✅ Dynamic KPI Engine
+- ✅ Executive Analytics
+- ✅ Revenue Analysis
+- ✅ Product Analysis
+- ✅ Regional Analysis
+- ✅ Business Insights
+
+### 🎛 Interactive Dashboard
+
+- ✅ Global Filters
+- ✅ Dynamic Charts
+- ✅ Responsive KPI Cards
+- ✅ Real-time Updates
+
+### 🏗 Software Engineering
+
+- ✅ Modular Architecture
+- ✅ Reusable Components
+- ✅ Separation of Concerns
+- ✅ Automated Testing
+- ✅ Git Version Control
+- ✅ AI-assisted Development Workflow
+
+---
+
+## 🏗 Architecture
+
+```
+CSV / Excel
+      │
+      ▼
+Upload Center
+      │
+      ▼
+DataLoader
+      │
+      ▼
+Filtering Engine
+      │
+      ▼
+Analytics Layer
+      │
+ ┌────┴───────────┐
+ ▼                ▼
+KPIs      Executive Analytics
+                     │
+                     ▼
+             Business Insights
+```
+
+---
+
+## 📁 Project Structure
+
+```
+NovaMart_Sales_Dashboard/
+
+├── assets/
+├── components/
+│   ├── analytics/
+│   ├── footer.py
+│   ├── header.py
+│   ├── kpi_cards.py
+│   ├── sidebar.py
+│   └── upload_center.py
+│
+├── config/
+├── data/
+├── docs/
+├── pages/
+├── tests/
+├── utils/
+│
+├── app.py
+├── requirements.txt
+└── README.md
+```
+
+---
+
+## 📸 Screenshots
+
+### 🏠 Home Page
+
+![Home Page](assets/screenshots/home-page.png)
+
+---
+
+### 📊 Dashboard Overview
+
+![Dashboard](assets/screenshots/dashboard-overview.png)
+
+---
+
+### 🎛 Interactive Filters
+
+![Filters](assets/screenshots/interactive-filters.png)
+
+---
+
+### 📈 Executive Analytics
+
+![Executive Analytics](assets/screenshots/executive-analytics.png)
+
+---
+
+### 💡 Business Insights
+
+![Business Insights](assets/screenshots/business-insights.png)
+
+## ⚙ Technology Stack
+
+| Category | Technology |
+|-----------|------------|
+| Language | Python |
+| Framework | Streamlit |
+| Visualization | Plotly |
+| Data Processing | Pandas |
+| Excel Support | OpenPyXL |
+| Testing | Pytest |
+| Version Control | Git |
+| Repository | GitHub |
+
+---
+
+## 🚀 Installation
+
+Clone the repository
 
 ```bash
-# 1. Create and activate a virtual environment
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+git clone https://github.com/shahzad14285/novamart-sales-dashboard.git
+```
 
-# 2. Install dependencies
+Move into the project
+
+```bash
+cd novamart-sales-dashboard
+```
+
+Install dependencies
+
+```bash
 pip install -r requirements.txt
+```
 
-# 3. Run the app
+Run the application
+
+```bash
 streamlit run app.py
 ```
 
-The app will open at `http://localhost:8501`.
+---
 
-## Project Structure
+## 📂 Supported Dataset Format
 
-```
-NovaMart/
-├── app.py                 # Home page / Streamlit entry point
-├── requirements.txt
-├── README.md
-├── .gitignore
-│
-├── assets/                # Images, logos, static files
-├── components/            # Reusable UI components (sidebar, header, footer)
-├── config/                # Settings and constants (no business logic)
-├── data/                  # Sample / local data files
-├── docs/                  # Architecture and design docs
-├── pages/                 # Dashboard, Sales, Products, Customers, Reports
-├── tests/                 # Unit tests for utils/
-└── utils/                 # Business logic: data loading, calculations, formatting, helpers
-```
+Current required columns:
 
-See `docs/architecture.md` for a full description of the layering and
-data flow.
+| Column | Required |
+|----------|---------|
+| date | ✅ |
+| revenue | ✅ |
+| orders | ✅ |
 
-## Running Tests
+Optional columns:
 
-```bash
-pytest tests/
-```
+- product
+- customer
+- region
 
-## Extending the App
+NovaMart automatically detects optional columns and enables related analytics dynamically.
 
-- **New page**: add a module to `pages/`, register it in
-  `config/constants.py` (`NAV_ITEMS`).
-- **New data source**: add a loader function to `utils/data_loader.py`.
-- **New metric**: add a pure function to `utils/calculations.py` with a
-  matching test in `tests/`.
+---
 
-## Theme
+## 📊 Dashboard Modules
 
-NovaMart uses a professional blue business theme, configured in
-`.streamlit/config.toml` and `config/settings.py` (`THEME_COLORS`).
+- Home
+- Dashboard
+- Sales Analytics
+- Customers
+- Products
+- Settings
+
+---
+
+## 🧪 Testing
+
+NovaMart includes both automated and manual testing.
+
+### Automated
+
+- Data Loader Tests
+- Filter Engine Tests
+- Analytics Tests
+- Business Insights Tests
+
+### Manual
+
+- Upload Validation
+- KPI Verification
+- Filter Testing
+- Regression Testing
+
+---
+
+## 📈 Current Development Progress
+
+| Sprint | Status |
+|----------|--------|
+| Project Planning | ✅ |
+| Architecture | ✅ |
+| Foundation | ✅ |
+| Upload Center | ✅ |
+| Dynamic KPIs | ✅ |
+| Interactive Filters | ✅ |
+| Executive Analytics | ✅ |
+| Business Insights | ✅ |
+| Export Center | 🔄 |
+| Performance Optimization | 🔄 |
+| Deployment | ⏳ |
+
+---
+
+## 🛣 Roadmap
+
+### Version 0.3
+
+- Export Center
+- Excel Export
+- CSV Export
+
+### Version 0.4
+
+- Performance Improvements
+- UI Polish
+- Better Caching
+
+### Version 0.5
+
+- Cloud Deployment
+
+### Version 1.0
+
+Production-ready Business Intelligence Dashboard
+
+---
+
+## 🤖 AI-Assisted Development
+
+NovaMart is developed using a modern AI-assisted engineering workflow.
+
+Development combines:
+
+- ChatGPT
+- Claude Code
+- Git
+- GitHub
+- Manual Testing
+- Modular Software Architecture
+
+Every feature is planned, implemented, tested, documented and version-controlled.
+
+---
+
+## 👨‍💻 Author
+
+**Shahzad**
+
+Portfolio Project — Business Intelligence Dashboard
+
+---
+
+## 📄 License
+
+This project is intended for educational and portfolio purposes

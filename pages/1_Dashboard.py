@@ -2,15 +2,21 @@
 
 Hosts the Upload Center (bring your own CSV/Excel data), a global
 Filter Panel (Date Range / Product / Customer / Region -- whichever
-columns the uploaded dataset actually has), and the Key Performance
-Indicators + Revenue Trend chart, both calculated from the *filtered*
-dataset via ``utils/kpi_engine.py`` and ``components/charts.py``.
+columns the uploaded dataset actually has), the Key Performance
+Indicators, and the Executive Analytics layer (Executive Summary /
+Revenue / Products / Regions tabs), all calculated from the same
+*filtered* dataset via ``utils/kpi_engine.py`` and
+``components/analytics/``.
 
 There are no hard-coded placeholder values anywhere on this page: an
 empty state with guidance is shown until a file is uploaded, and every
 number/chart shown afterward is recalculated automatically whenever a
 new file is uploaded or a filter is changed, since Streamlit re-runs
 the page top-to-bottom on every widget interaction.
+
+Note: the standalone "Revenue Trend" chart previously shown directly on
+this page now lives inside Executive Analytics' Revenue tab (alongside
+a growth metric), instead of being duplicated in two places.
 """
 
 from __future__ import annotations
@@ -24,7 +30,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 import streamlit as st
 
-from components.charts import render_revenue_trend_chart
+from components.analytics import render_executive_analytics
 from components.filter_panel import render_filter_panel
 from components.footer import render_footer
 from components.header import inject_header_styles, render_header
@@ -41,7 +47,7 @@ render_sidebar(active_label="Dashboard")
 render_header(title="Dashboard", subtitle="Cross-functional overview of business performance")
 
 st.caption(
-    "Upload a CSV or Excel file below to calculate live KPIs and charts "
+    "Upload a CSV or Excel file below to calculate live KPIs and analytics "
     "from your own sales data."
 )
 
@@ -62,8 +68,8 @@ if uploaded_df is not None:
     # actually present in the uploaded dataset (date/product/customer/
     # region), and returns the dataset narrowed to the user's current
     # selections -- everything below reads from this, never from
-    # uploaded_df directly, so KPIs and the chart always match the
-    # active filters.
+    # uploaded_df directly, so KPIs and every analytics tab always match
+    # the active filters.
     filtered_df = render_filter_panel(uploaded_df)
 
 st.divider()
@@ -89,8 +95,8 @@ else:
 if filtered_df is not None:
     st.divider()
     try:
-        render_revenue_trend_chart(filtered_df)
-    except Exception as exc:  # noqa: BLE001 - defensive: a charting bug must never crash the dashboard
-        st.error(f"Unable to render the revenue trend chart: {exc}", icon="⚠️")
+        render_executive_analytics(filtered_df)
+    except Exception as exc:  # noqa: BLE001 - defensive: an analytics bug must never crash the dashboard
+        st.error(f"Unable to render executive analytics: {exc}", icon="⚠️")
 
 render_footer()
