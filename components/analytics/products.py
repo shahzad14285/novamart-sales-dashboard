@@ -13,6 +13,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from components.empty_state import render_empty_state
 from config.settings import CHART_COLOR_SEQUENCE, THEME_COLORS
 from utils.analytics import (
     calculate_revenue_by_group,
@@ -38,7 +39,7 @@ def render_product_analytics(df: pd.DataFrame, product_col: str = "product", rev
     # the same way everywhere in the app.
     fields = detect_available_filters(df, columns={"product": product_col})
     if not fields["product"].available:
-        st.info(
+        render_empty_state(
             "This dataset doesn't include a usable 'product' column, so "
             "product analytics aren't available. Upload a file with a "
             "'product' column to see this view.",

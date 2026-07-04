@@ -12,6 +12,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from components.empty_state import render_empty_state
 from config.settings import CHART_COLOR_SEQUENCE, THEME_COLORS
 from utils.analytics import calculate_revenue_by_group, calculate_top_group
 from utils.filters import detect_available_filters
@@ -28,7 +29,7 @@ def render_region_analytics(df: pd.DataFrame, region_col: str = "region", revenu
     """
     fields = detect_available_filters(df, columns={"region": region_col})
     if not fields["region"].available:
-        st.info(
+        render_empty_state(
             "This dataset doesn't include a usable 'region' column, so "
             "region analytics aren't available. Upload a file with a "
             "'region' column to see this view.",

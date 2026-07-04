@@ -43,10 +43,10 @@ def render_executive_analytics(df: pd.DataFrame) -> None:
         df: The (already filtered) dataset to analyze -- typically the
             DataFrame returned by the Dashboard's filter panel.
     """
-    st.markdown("### 🧭 Executive Analytics")
+    st.markdown('<p class="nm-section-title">🧭 Executive Analytics</p>', unsafe_allow_html=True)
 
     summary_tab, insights_tab, revenue_tab, products_tab, regions_tab = st.tabs(
-        ["Executive Summary", "Business Insights", "Revenue", "Products", "Regions"]
+        ["🧾 Executive Summary", "💡 Business Insights", "💰 Revenue", "📦 Products", "🌍 Regions"]
     )
 
     with summary_tab:

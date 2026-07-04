@@ -25,19 +25,17 @@ def render_sidebar(active_label: str = "Home") -> None:
     with st.sidebar:
         st.markdown(
             f"""
-            <div style="text-align:center; padding-bottom: 0.5rem;">
-                <span style="font-size:2.2rem;">{APP_ICON}</span>
-                <h2 style="margin:0.25rem 0 0 0;">{COMPANY_NAME}</h2>
-                <p style="color:#5A6472; font-size:0.85rem; margin-top:0;">
-                    {APP_TAGLINE}
-                </p>
+            <div class="nm-sidebar-brand">
+                <span class="nm-sidebar-brand-icon">{APP_ICON}</span>
+                <h2 class="nm-sidebar-brand-name">{COMPANY_NAME}</h2>
+                <p class="nm-sidebar-brand-tagline">{APP_TAGLINE}</p>
             </div>
             """,
             unsafe_allow_html=True,
         )
         st.divider()
 
-        st.caption("NAVIGATION")
+        st.markdown('<p class="nm-eyebrow">Navigation</p>', unsafe_allow_html=True)
         for item in NAV_ITEMS:
             # st.page_link renders a native, clickable nav entry that
             # works across the multipage app without manual routing.

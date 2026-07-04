@@ -20,6 +20,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from components.empty_state import render_empty_state
 from utils.formatting import format_currency, format_date, format_integer, format_percentage
 from utils.insights import BusinessInsights, generate_business_insights
 
@@ -43,7 +44,7 @@ def render_business_insights(
         region_col: Column holding region names, if present.
     """
     if df is None or df.empty:
-        st.caption("No data available for business insights yet.")
+        render_empty_state("No data available for business insights yet.", icon="💡")
         return
 
     insights = generate_business_insights(

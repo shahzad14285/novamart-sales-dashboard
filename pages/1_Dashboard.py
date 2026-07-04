@@ -31,6 +31,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 import streamlit as st
 
 from components.analytics import render_executive_analytics
+from components.empty_state import render_empty_state
 from components.filter_panel import render_filter_panel
 from components.footer import render_footer
 from components.header import inject_header_styles, render_header
@@ -73,12 +74,12 @@ if uploaded_df is not None:
     filtered_df = render_filter_panel(uploaded_df)
 
 st.divider()
-st.markdown("### 📊 Key Performance Indicators")
+st.markdown('<p class="nm-section-title">📊 Key Performance Indicators</p>', unsafe_allow_html=True)
 
 if filtered_df is None:
     # No hard-coded numbers here -- just guidance. Real KPI values only
     # ever come from an uploaded, validated dataset.
-    st.info(
+    render_empty_state(
         "Upload a dataset above to see your KPIs calculated live. This "
         "section updates automatically as soon as a file is uploaded or "
         "a filter is changed.",

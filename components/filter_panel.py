@@ -17,6 +17,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from components.empty_state import render_empty_state
 from utils.filters import DEFAULT_FILTER_COLUMNS, FilterField, apply_filters, detect_available_filters
 
 
@@ -46,12 +47,13 @@ def render_filter_panel(
     fields = detect_available_filters(df, columns)
     available_fields = {key: f for key, f in fields.items() if f.available}
 
-    st.markdown("#### 🔍 Filters")
+    st.markdown('<p class="nm-section-title">🔍 Filters</p>', unsafe_allow_html=True)
 
     if not available_fields:
-        st.caption(
+        render_empty_state(
             "No filterable columns (date, product, customer, region) "
-            "were found in this dataset."
+            "were found in this dataset.",
+            icon="🔍",
         )
         return df
 

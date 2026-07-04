@@ -13,6 +13,7 @@ import pandas as pd
 import streamlit as st
 
 from components.charts import render_revenue_trend_chart
+from components.empty_state import render_empty_state
 from utils.calculations import calculate_kpi_summary, calculate_total_revenue
 from utils.formatting import format_currency, format_percentage
 
@@ -26,7 +27,7 @@ def render_revenue_analytics(df: pd.DataFrame, date_col: str = "date", revenue_c
         revenue_col: Column holding revenue values.
     """
     if df is None or df.empty:
-        st.caption("No data available for revenue analytics yet.")
+        render_empty_state("No data available for revenue analytics yet.", icon="💰")
         return
 
     total_revenue = calculate_total_revenue(df, revenue_col)

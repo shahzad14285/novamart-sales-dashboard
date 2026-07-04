@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from config.settings import THEME_COLORS
+from components.theme import inject_global_styles
 
 
 def render_header(title: str, subtitle: str | None = None) -> None:
@@ -38,30 +38,15 @@ def render_header(title: str, subtitle: str | None = None) -> None:
 
 
 def inject_header_styles() -> None:
-    """Inject the CSS used by :func:`render_header`.
+    """Inject the app-wide stylesheet (every page calls this once).
 
-    Kept separate from ``render_header`` so it can be called once per
-    page (or once globally) without duplicating <style> blocks.
+    Every page in the app already calls this function right after
+    ``st.set_page_config()``, which makes it the one natural choke
+    point for the whole design system, not just the header markup.
+    It now delegates to :func:`components.theme.inject_global_styles`
+    so there is a single source of truth for every CSS rule the app
+    uses -- header, KPI cards, tabs, sidebar, empty states, footer,
+    accessibility, and responsiveness -- instead of several modules
+    each injecting their own ``<style>`` block.
     """
-    st.markdown(
-        f"""
-        <style>
-        .nm-header-title {{
-            color: {THEME_COLORS['primary_dark']};
-            font-weight: 700;
-            margin-bottom: 0;
-        }}
-        .nm-header-subtitle {{
-            color: {THEME_COLORS['muted_text']};
-            font-size: 1.05rem;
-            margin-top: 0.25rem;
-        }}
-        .nm-header-rule {{
-            border: none;
-            border-top: 2px solid {THEME_COLORS['border']};
-            margin: 0.5rem 0 1.5rem 0;
-        }}
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    inject_global_styles()

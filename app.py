@@ -27,30 +27,15 @@ from utils.helpers import get_greeting_by_time
 
 
 def configure_page() -> None:
-    """Apply global Streamlit page configuration and inject shared CSS."""
+    """Apply global Streamlit page configuration and inject shared CSS.
+
+    ``inject_header_styles()`` now injects the app's entire design
+    system (``components/theme.py``) -- including the ``.nm-section-title``
+    class used below -- so this function no longer needs its own
+    ``<style>`` block on top of it.
+    """
     st.set_page_config(**PAGE_CONFIG)
     inject_header_styles()
-
-    # Global styling for KPI cards, matching the professional blue theme.
-    st.markdown(
-        f"""
-        <style>
-        .nm-kpi-card {{
-            background-color: {THEME_COLORS['secondary_background']};
-            border: 1px solid {THEME_COLORS['border']};
-            border-radius: 0.75rem;
-            padding: 1rem 1.25rem;
-        }}
-        .nm-section-title {{
-            color: {THEME_COLORS['primary_dark']};
-            font-weight: 600;
-            margin-top: 1.5rem;
-            margin-bottom: 0.5rem;
-        }}
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
 
 
 def render_kpi_section() -> None:
@@ -62,7 +47,7 @@ def render_kpi_section() -> None:
     failure (missing file, bad columns, unreadable file) is caught here
     and shown as a friendly message instead of crashing the page.
     """
-    st.markdown('<p class="nm-section-title">Key Performance Indicators</p>', unsafe_allow_html=True)
+    st.markdown('<p class="nm-section-title">📊 Key Performance Indicators</p>', unsafe_allow_html=True)
 
     try:
         sales_df = load_sales_data()
@@ -111,7 +96,7 @@ def render_chart_section() -> None:
     is loaded through the same ``DataLoader``-backed layer as the KPI
     section, with failures shown as a friendly message.
     """
-    st.markdown('<p class="nm-section-title">Revenue Trend (Sample Data)</p>', unsafe_allow_html=True)
+    st.markdown('<p class="nm-section-title">📈 Revenue Trend (Sample Data)</p>', unsafe_allow_html=True)
 
     try:
         sales_df = load_sales_data()

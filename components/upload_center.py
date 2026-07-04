@@ -16,6 +16,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from components.empty_state import render_empty_state
 from utils.data_loader import DataLoader, sales_data_loader
 from utils.exceptions import DataLoaderError
 from utils.formatting import format_file_size, format_integer
@@ -61,7 +62,7 @@ def render_upload_center(
     uploaded_file = _render_file_picker(key)
 
     if uploaded_file is None:
-        st.info("No file uploaded yet. Accepted formats: CSV, XLSX.", icon="📄")
+        render_empty_state("No file uploaded yet. Accepted formats: CSV, XLSX.", icon="📄")
         return None
 
     st.success(f"File received: **{uploaded_file.name}**", icon="✅")
@@ -81,8 +82,8 @@ def _render_header(title: str, description: str) -> None:
         title: Section heading text.
         description: Supporting description text.
     """
-    st.markdown(f"### 📤 {title}")
-    st.caption(description)
+    st.markdown(f'<p class="nm-section-title">📤 {title}</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="nm-section-subtitle">{description}</p>', unsafe_allow_html=True)
 
 
 def _render_file_picker(key: str) -> object | None:

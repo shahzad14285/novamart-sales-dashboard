@@ -12,6 +12,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from components.empty_state import render_empty_state
 from utils.analytics import calculate_revenue_concentration, calculate_top_group
 from utils.calculations import calculate_kpi_summary, calculate_total_revenue
 from utils.filters import detect_available_filters
@@ -27,7 +28,7 @@ def render_executive_summary(df: pd.DataFrame, product_col: str = "product", reg
         region_col: Column holding region names, if present.
     """
     if df is None or df.empty:
-        st.caption("No data available for an executive summary yet.")
+        render_empty_state("No data available for an executive summary yet.", icon="🧾")
         return
 
     fields = detect_available_filters(df, columns={"product": product_col, "region": region_col})
