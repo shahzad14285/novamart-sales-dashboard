@@ -1,7 +1,13 @@
-"""Reports page (placeholder).
+"""Reports page.
 
-Intended to host exportable, scheduled, and ad-hoc reports. Currently
-a placeholder pending report-generation integration.
+Hosts the Executive Report Center (Sprint 6.2, Module 5): upload/filter
+a dataset, assemble an executive report, review AI-generated
+recommendations, and generate PDF/CSV/Excel/JSON exports -- all backed
+by the Reporting, AI Recommendation, PDF Generator, and Export
+services. This page is intentionally thin: it only wires page
+configuration and the shared header/sidebar/footer around
+``ui.executive_report_center.render_executive_report_center()``, which
+owns everything else.
 """
 
 from __future__ import annotations
@@ -16,21 +22,15 @@ import streamlit as st
 from components.footer import render_footer
 from components.header import inject_header_styles, render_header
 from components.sidebar import render_sidebar
-from config.constants import PLACEHOLDER_NOTICE
 from config.settings import PAGE_CONFIG
+from ui.executive_report_center import render_executive_report_center
 
 st.set_page_config(**{**PAGE_CONFIG, "page_title": "NovaMart | Reports"})
 inject_header_styles()
 
 render_sidebar(active_label="Reports")
-render_header(title="Reports", subtitle="Generate, schedule, and export business reports")
+render_header(title="Reports", subtitle="Generate, review, and export business reports")
 
-st.info(PLACEHOLDER_NOTICE, icon="🚧")
-
-with st.container(border=True):
-    st.subheader("Report Builder")
-    st.caption("Coming soon: choose a report type, date range, and export format.")
-    st.selectbox("Report type", ["Sales Summary", "Product Performance", "Customer Insights"], disabled=True)
-    st.button("Generate Report", disabled=True)
+render_executive_report_center()
 
 render_footer()

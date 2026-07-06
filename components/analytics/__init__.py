@@ -21,7 +21,7 @@ import pandas as pd
 import streamlit as st
 
 from components.analytics.executive_summary import render_executive_summary
-from components.analytics.insights import render_business_insights
+from components.analytics.insights import render_business_insights, render_business_insights_from_value
 from components.analytics.products import render_product_analytics
 from components.analytics.regions import render_region_analytics
 from components.analytics.revenue import render_revenue_analytics
@@ -29,6 +29,7 @@ from components.analytics.revenue import render_revenue_analytics
 __all__ = [
     "render_executive_analytics",
     "render_business_insights",
+    "render_business_insights_from_value",
     "render_executive_summary",
     "render_product_analytics",
     "render_region_analytics",

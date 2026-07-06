@@ -57,7 +57,22 @@ def render_business_insights(
     )
 
     st.caption("Executive-level observations calculated automatically from the filtered dataset.")
+    render_business_insights_from_value(insights)
 
+
+def render_business_insights_from_value(insights: BusinessInsights) -> None:
+    """Render the Business Insights cards from an already-computed value object.
+
+    Split out from :func:`render_business_insights` so a caller that
+    already has a :class:`BusinessInsights` instance -- e.g. the
+    Executive Report Center rendering a
+    :class:`~services.reporting_service.Report`'s ``business_insights``
+    section -- can reuse the exact same card layout without calling
+    :func:`~utils.insights.generate_business_insights` a second time.
+
+    Args:
+        insights: An already-computed :class:`BusinessInsights` value object.
+    """
     _render_pacing_cards(insights)
     _render_day_cards(insights)
     _render_volume_cards(insights)
