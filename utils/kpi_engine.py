@@ -31,6 +31,7 @@ from typing import Callable
 import pandas as pd
 
 from config.constants import KPI_ICONS, KPI_LABELS
+from monitoring.service import monitoring_service
 from tenancy.context import TenantContext, validate_tenant_context
 from utils.calculations import (
     calculate_average_order_value,
@@ -141,11 +142,18 @@ class KPIEngine:
             MissingTenantContextError: If no tenant context was supplied.
             InactiveTenantError: If the supplied tenant is not active.
         """
-        validate_tenant_context(tenant_context, service_name="KPIEngine", operation="calculate_all")
-        return {
-            key: func(df, self.date_col, self.revenue_col, self.orders_col)
-            for key, func in self._registry.items()
-        }
+        # Sprint 6.4 -- Observability & Monitoring Service: wraps tenant
+        # validation + the (unchanged) calculation below so a start,
+        # completion/failure, and duration are always recorded, without
+        # KPIEngine knowing how or where those events are stored.
+        with monitoring_service.time_operation(
+            service_name="KPIEngine", operation="calculate_all", tenant_context=tenant_context
+        ):
+            validate_tenant_context(tenant_context, service_name="KPIEngine", operation="calculate_all")
+            return {
+                key: func(df, self.date_col, self.revenue_col, self.orders_col)
+                for key, func in self._registry.items()
+            }
 
     def calculate(self, df: pd.DataFrame, key: str) -> KPIResult:
         """Compute a single KPI by key.

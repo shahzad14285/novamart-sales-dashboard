@@ -34,6 +34,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from monitoring.service import monitoring_service
 from tenancy.context import TenantContext, validate_tenant_context
 from utils.analytics import calculate_revenue_by_group, calculate_revenue_concentration
 from utils.calculations import (
@@ -248,73 +249,82 @@ def generate_business_insights(
         MissingTenantContextError: If no tenant context was supplied.
         InactiveTenantError: If the supplied tenant is not active.
     """
-    validate_tenant_context(tenant_context, service_name="BusinessInsights", operation="generate_business_insights")
+    # Sprint 6.4 -- Observability & Monitoring Service: wraps tenant
+    # validation + the (unchanged) computation below so a start,
+    # completion/failure, and duration are always recorded, without this
+    # module knowing how or where those events are stored.
+    with monitoring_service.time_operation(
+        service_name="BusinessInsights", operation="generate_business_insights", tenant_context=tenant_context
+    ):
+        validate_tenant_context(
+            tenant_context, service_name="BusinessInsights", operation="generate_business_insights"
+        )
 
-    if df is None or df.empty:
+        if df is None or df.empty:
+            return BusinessInsights(
+                total_revenue=0.0,
+                average_daily_revenue=0.0,
+                highest_revenue_day=(None, 0.0),
+                lowest_revenue_day=(None, 0.0),
+                total_orders=0,
+                average_orders_per_day=0.0,
+                total_transactions=0,
+                active_sales_days=0,
+                product_insights_available=False,
+                best_product=None,
+                best_product_revenue=0.0,
+                worst_product=None,
+                worst_product_revenue=0.0,
+                top_product_concentration=0.0,
+                region_insights_available=False,
+                best_region=None,
+                best_region_revenue=0.0,
+                worst_region=None,
+                worst_region_revenue=0.0,
+            )
+
+        fields = detect_available_filters(df, columns={"product": product_col, "region": region_col})
+
+        product_available = fields["product"].available
+        if product_available:
+            best_product, best_product_revenue, worst_product, worst_product_revenue = calculate_best_worst_group(
+                df, product_col, revenue_col
+            )
+            top_product_concentration = calculate_revenue_concentration(
+                df, product_col, revenue_col, top_n=_TOP_N_PRODUCT_CONCENTRATION
+            )
+        else:
+            best_product = worst_product = None
+            best_product_revenue = worst_product_revenue = 0.0
+            top_product_concentration = 0.0
+
+        region_available = fields["region"].available
+        if region_available:
+            best_region, best_region_revenue, worst_region, worst_region_revenue = calculate_best_worst_group(
+                df, region_col, revenue_col
+            )
+        else:
+            best_region = worst_region = None
+            best_region_revenue = worst_region_revenue = 0.0
+
         return BusinessInsights(
-            total_revenue=0.0,
-            average_daily_revenue=0.0,
-            highest_revenue_day=(None, 0.0),
-            lowest_revenue_day=(None, 0.0),
-            total_orders=0,
-            average_orders_per_day=0.0,
-            total_transactions=0,
-            active_sales_days=0,
-            product_insights_available=False,
-            best_product=None,
-            best_product_revenue=0.0,
-            worst_product=None,
-            worst_product_revenue=0.0,
-            top_product_concentration=0.0,
-            region_insights_available=False,
-            best_region=None,
-            best_region_revenue=0.0,
-            worst_region=None,
-            worst_region_revenue=0.0,
+            total_revenue=calculate_total_revenue(df, revenue_col),
+            average_daily_revenue=calculate_average_daily_revenue(df, date_col, revenue_col),
+            highest_revenue_day=find_highest_revenue_day(df, date_col, revenue_col),
+            lowest_revenue_day=find_lowest_revenue_day(df, date_col, revenue_col),
+            total_orders=calculate_total_orders(df, orders_col),
+            average_orders_per_day=calculate_average_orders_per_day(df, date_col, orders_col),
+            total_transactions=calculate_total_transactions(df),
+            active_sales_days=calculate_active_sales_days(df, date_col),
+            product_insights_available=product_available,
+            best_product=best_product,
+            best_product_revenue=best_product_revenue,
+            worst_product=worst_product,
+            worst_product_revenue=worst_product_revenue,
+            top_product_concentration=top_product_concentration,
+            region_insights_available=region_available,
+            best_region=best_region,
+            best_region_revenue=best_region_revenue,
+            worst_region=worst_region,
+            worst_region_revenue=worst_region_revenue,
         )
-
-    fields = detect_available_filters(df, columns={"product": product_col, "region": region_col})
-
-    product_available = fields["product"].available
-    if product_available:
-        best_product, best_product_revenue, worst_product, worst_product_revenue = calculate_best_worst_group(
-            df, product_col, revenue_col
-        )
-        top_product_concentration = calculate_revenue_concentration(
-            df, product_col, revenue_col, top_n=_TOP_N_PRODUCT_CONCENTRATION
-        )
-    else:
-        best_product = worst_product = None
-        best_product_revenue = worst_product_revenue = 0.0
-        top_product_concentration = 0.0
-
-    region_available = fields["region"].available
-    if region_available:
-        best_region, best_region_revenue, worst_region, worst_region_revenue = calculate_best_worst_group(
-            df, region_col, revenue_col
-        )
-    else:
-        best_region = worst_region = None
-        best_region_revenue = worst_region_revenue = 0.0
-
-    return BusinessInsights(
-        total_revenue=calculate_total_revenue(df, revenue_col),
-        average_daily_revenue=calculate_average_daily_revenue(df, date_col, revenue_col),
-        highest_revenue_day=find_highest_revenue_day(df, date_col, revenue_col),
-        lowest_revenue_day=find_lowest_revenue_day(df, date_col, revenue_col),
-        total_orders=calculate_total_orders(df, orders_col),
-        average_orders_per_day=calculate_average_orders_per_day(df, date_col, orders_col),
-        total_transactions=calculate_total_transactions(df),
-        active_sales_days=calculate_active_sales_days(df, date_col),
-        product_insights_available=product_available,
-        best_product=best_product,
-        best_product_revenue=best_product_revenue,
-        worst_product=worst_product,
-        worst_product_revenue=worst_product_revenue,
-        top_product_concentration=top_product_concentration,
-        region_insights_available=region_available,
-        best_region=best_region,
-        best_region_revenue=best_region_revenue,
-        worst_region=worst_region,
-        worst_region_revenue=worst_region_revenue,
-    )

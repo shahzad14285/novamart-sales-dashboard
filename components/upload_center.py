@@ -17,6 +17,7 @@ import pandas as pd
 import streamlit as st
 
 from components.empty_state import render_empty_state
+from monitoring.service import monitoring_service
 from tenancy.context import TenantContext
 from tenancy.exceptions import TenantContextError
 from utils.data_loader import DataLoader, sales_data_loader
@@ -137,7 +138,17 @@ def _load_and_validate(
         The cleaned DataFrame, or ``None`` if validation failed.
     """
     try:
-        return loader.load_uploaded_file(uploaded_file, tenant_context=tenant_context)
+        # Sprint 6.4 -- Observability & Monitoring Service: wraps the
+        # (unchanged) load below so a start, completion/failure, and
+        # duration are always recorded for the Upload Center itself,
+        # distinct from the Data Loader's own event -- without this
+        # component knowing how or where those events are stored. Any
+        # exception raised inside is recorded by time_operation, then
+        # re-raised unchanged and handled below exactly as before.
+        with monitoring_service.time_operation(
+            service_name="UploadCenter", operation="load_and_validate", tenant_context=tenant_context
+        ):
+            return loader.load_uploaded_file(uploaded_file, tenant_context=tenant_context)
     except TenantContextError as exc:
         st.error(str(exc), icon="🔒")
         return None

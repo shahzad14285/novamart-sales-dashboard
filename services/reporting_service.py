@@ -55,6 +55,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Callable, Mapping
 
+from monitoring.service import monitoring_service
 from tenancy.context import TenantContext, validate_tenant_context
 from utils.insights import BusinessInsights
 from utils.kpi_engine import KPIResult
@@ -590,38 +591,45 @@ class ReportingService:
             MissingReportDataError: If a *required* section has no data
                 in ``context``.
         """
-        validate_tenant_context(tenant_context, service_name="ReportingService", operation="generate_report")
+        # Sprint 6.4 -- Observability & Monitoring Service: wraps tenant
+        # validation + the (unchanged) assembly below so a start,
+        # completion/failure, and duration are always recorded, without
+        # ReportingService knowing how or where those events are stored.
+        with monitoring_service.time_operation(
+            service_name="ReportingService", operation="generate_report", tenant_context=tenant_context
+        ):
+            validate_tenant_context(tenant_context, service_name="ReportingService", operation="generate_report")
 
-        if not isinstance(context, ReportContext):
-            raise InvalidReportContextError(context)
+            if not isinstance(context, ReportContext):
+                raise InvalidReportContextError(context)
 
-        key = self._normalize_report_type_key(report_type)
-        section_specs = self._report_definitions.get(key)
-        if section_specs is None:
-            raise UnknownReportTypeError(key, tuple(self._report_definitions))
+            key = self._normalize_report_type_key(report_type)
+            section_specs = self._report_definitions.get(key)
+            if section_specs is None:
+                raise UnknownReportTypeError(key, tuple(self._report_definitions))
 
-        # Prefer returning a real ReportType member for the four
-        # built-ins (so callers can still do `report.report_type is
-        # ReportType.EXECUTIVE`); any other, future-defined report type
-        # is returned as the plain string key it was defined under.
-        resolved_type: ReportType | str = ReportType(key) if key in _KNOWN_REPORT_TYPE_VALUES else key
+            # Prefer returning a real ReportType member for the four
+            # built-ins (so callers can still do `report.report_type is
+            # ReportType.EXECUTIVE`); any other, future-defined report type
+            # is returned as the plain string key it was defined under.
+            resolved_type: ReportType | str = ReportType(key) if key in _KNOWN_REPORT_TYPE_VALUES else key
 
-        sections: list[ReportSection] = []
-        for spec in section_specs:
-            builder = self._section_builders.get(spec.key)
-            if builder is None:
-                raise UnknownReportSectionError(spec.key, key)
+            sections: list[ReportSection] = []
+            for spec in section_specs:
+                builder = self._section_builders.get(spec.key)
+                if builder is None:
+                    raise UnknownReportSectionError(spec.key, key)
 
-            section = builder(context)
-            if section is None:
-                if spec.required:
-                    raise MissingReportDataError(key, spec.key)
-                continue  # Optional and absent: omit gracefully, no error.
+                section = builder(context)
+                if section is None:
+                    if spec.required:
+                        raise MissingReportDataError(key, spec.key)
+                    continue  # Optional and absent: omit gracefully, no error.
 
-            sections.append(replace(section, order=len(sections)))
+                sections.append(replace(section, order=len(sections)))
 
-        metadata = context.metadata or _default_metadata(resolved_type)
-        return Report(report_type=resolved_type, metadata=metadata, sections=tuple(sections))
+            metadata = context.metadata or _default_metadata(resolved_type)
+            return Report(report_type=resolved_type, metadata=metadata, sections=tuple(sections))
 
     # ------------------------------------------------------------------
     # Internal helpers

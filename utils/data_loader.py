@@ -38,6 +38,7 @@ import pandas as pd
 import streamlit as st
 
 from config.settings import SAMPLE_SALES_CSV
+from monitoring.service import monitoring_service
 from tenancy.context import TenantContext, validate_tenant_context
 from utils.exceptions import (
     DataFileNotFoundError,
@@ -249,37 +250,46 @@ class DataLoader:
             MissingTenantContextError: If no tenant context was supplied.
             InactiveTenantError: If the supplied tenant is not active.
         """
-        validate_tenant_context(tenant_context, service_name="DataLoader", operation="load_uploaded_file")
+        # Sprint 6.4 -- Observability & Monitoring Service: wraps tenant
+        # validation + the (unchanged) load below so a start,
+        # completion/failure, and duration are always recorded, without
+        # DataLoader knowing how or where those events are stored.
+        with monitoring_service.time_operation(
+            service_name="DataLoader", operation="load_uploaded_file", tenant_context=tenant_context
+        ):
+            validate_tenant_context(tenant_context, service_name="DataLoader", operation="load_uploaded_file")
 
-        if uploaded_file is None:
-            raise NoFileUploadedError()
+            if uploaded_file is None:
+                raise NoFileUploadedError()
 
-        filename = getattr(uploaded_file, "name", "uploaded_file")
-        suffix = Path(filename).suffix.lower()
+            filename = getattr(uploaded_file, "name", "uploaded_file")
+            suffix = Path(filename).suffix.lower()
 
-        try:
-            if suffix in _EXCEL_EXTENSIONS:
-                df = pd.read_excel(uploaded_file, sheet_name=sheet_name)
-            elif suffix in _CSV_EXTENSIONS:
-                df = pd.read_csv(uploaded_file)
-            else:
-                raise UnsupportedFileTypeError(filename, supported=_EXCEL_EXTENSIONS + _CSV_EXTENSIONS)
-        except UnsupportedFileTypeError:
-            raise
-        except Exception as exc:  # noqa: BLE001 - re-raised as a domain exception below
-            raise DataReadError(filename, exc) from exc
+            try:
+                if suffix in _EXCEL_EXTENSIONS:
+                    df = pd.read_excel(uploaded_file, sheet_name=sheet_name)
+                elif suffix in _CSV_EXTENSIONS:
+                    df = pd.read_csv(uploaded_file)
+                else:
+                    raise UnsupportedFileTypeError(filename, supported=_EXCEL_EXTENSIONS + _CSV_EXTENSIONS)
+            except UnsupportedFileTypeError:
+                raise
+            except Exception as exc:  # noqa: BLE001 - re-raised as a domain exception below
+                raise DataReadError(filename, exc) from exc
 
-        if isinstance(df, dict):
-            raise DataReadError(filename, ValueError("Multiple sheets were returned; specify a single sheet_name."))
+            if isinstance(df, dict):
+                raise DataReadError(
+                    filename, ValueError("Multiple sheets were returned; specify a single sheet_name.")
+                )
 
-        return self._finalize(
-            df,
-            required_columns=self.required_columns,
-            date_columns=self.date_columns,
-            fill_numeric=self.fill_numeric,
-            fill_text=self.fill_text,
-            source=filename,
-        )
+            return self._finalize(
+                df,
+                required_columns=self.required_columns,
+                date_columns=self.date_columns,
+                fill_numeric=self.fill_numeric,
+                fill_text=self.fill_text,
+                source=filename,
+            )
 
     # ------------------------------------------------------------------
     # Internal helpers (shared with the module-level cached loader below)

@@ -19,6 +19,7 @@ NAV_ITEMS: list[dict[str, str]] = [
     {"label": "Products", "path": "pages/3_Products.py", "icon": "📦"},
     {"label": "Customers", "path": "pages/4_Customers.py", "icon": "🧑‍🤝‍🧑"},
     {"label": "Reports", "path": "pages/5_Reports.py", "icon": "📑"},
+    {"label": "Monitoring", "path": "pages/6_Monitoring.py", "icon": "🩺"},
 ]
 
 # --------------------------------------------------------------------------

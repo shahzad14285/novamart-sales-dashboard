@@ -97,6 +97,7 @@ from components.filter_panel import render_filter_panel
 from components.kpi_cards import render_kpi_cards
 from components.tenant_selector import get_active_tenant_context
 from components.upload_center import render_upload_center
+from monitoring.service import monitoring_service
 from services.ai_recommendation_service import (
     AIRecommendationServiceError,
     Recommendation,
@@ -190,36 +191,48 @@ def render_executive_report_center(
 
     st.caption(f"Organization: **{tenant.display_name}**")
 
-    working_df = df if df is not None else _acquire_dataset(tenant_context)
-    if working_df is None or working_df.empty:
-        render_empty_state(
-            "Upload a dataset above to build an executive report, review AI "
-            "recommendations, and generate PDF/CSV/Excel/JSON exports.",
-            icon="📑",
+    # Sprint 6.4 -- Observability & Monitoring Service: wraps the
+    # (unchanged) screen-assembly flow below so a start, completion, and
+    # duration are always recorded for the Executive Report Center
+    # itself -- distinct from the per-service events each service call
+    # inside it already records -- without this module knowing how or
+    # where those events are stored. Tenant context is already validated
+    # above, so this only ever runs for an active tenant.
+    with monitoring_service.time_operation(
+        service_name="ExecutiveReportCenter",
+        operation="render_executive_report_center",
+        tenant_context=tenant_context,
+    ):
+        working_df = df if df is not None else _acquire_dataset(tenant_context)
+        if working_df is None or working_df.empty:
+            render_empty_state(
+                "Upload a dataset above to build an executive report, review AI "
+                "recommendations, and generate PDF/CSV/Excel/JSON exports.",
+                icon="📑",
+            )
+            return
+
+        st.divider()
+        report_type, prepared_for = _render_report_controls()
+
+        context = _build_report_context(working_df, report_type, prepared_for, tenant_context)
+        try:
+            report = sales_reporting_service.generate_report(report_type, context, tenant_context=tenant_context)
+        except ReportingServiceError as exc:
+            st.error(f"Unable to assemble the report: {exc}", icon="⚠️")
+            return
+
+        report_tab, recommendations_tab, pdf_tab, export_tab = st.tabs(
+            ["🧾 Executive Report", "🤖 AI Recommendations", "📄 PDF Export", "📤 Data Export"]
         )
-        return
-
-    st.divider()
-    report_type, prepared_for = _render_report_controls()
-
-    context = _build_report_context(working_df, report_type, prepared_for, tenant_context)
-    try:
-        report = sales_reporting_service.generate_report(report_type, context, tenant_context=tenant_context)
-    except ReportingServiceError as exc:
-        st.error(f"Unable to assemble the report: {exc}", icon="⚠️")
-        return
-
-    report_tab, recommendations_tab, pdf_tab, export_tab = st.tabs(
-        ["🧾 Executive Report", "🤖 AI Recommendations", "📄 PDF Export", "📤 Data Export"]
-    )
-    with report_tab:
-        _render_report_tab(report)
-    with recommendations_tab:
-        _render_recommendations_tab(context, report, tenant_context)
-    with pdf_tab:
-        _render_pdf_export_tab(report, row_count=len(working_df), tenant_context=tenant_context)
-    with export_tab:
-        _render_data_export_tab(working_df, tenant_context)
+        with report_tab:
+            _render_report_tab(report)
+        with recommendations_tab:
+            _render_recommendations_tab(context, report, tenant_context)
+        with pdf_tab:
+            _render_pdf_export_tab(report, row_count=len(working_df), tenant_context=tenant_context)
+        with export_tab:
+            _render_data_export_tab(working_df, tenant_context)
 
 
 # ==============================================================================

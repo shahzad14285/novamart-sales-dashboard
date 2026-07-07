@@ -97,6 +97,7 @@ from reportlab.platypus import (
 )
 from reportlab.platypus.tableofcontents import TableOfContents
 
+from monitoring.service import monitoring_service
 from services.reporting_service import Report, ReportSection
 from tenancy.context import TenantContext, validate_tenant_context
 from utils.formatting import format_currency, format_date, format_integer
@@ -599,59 +600,66 @@ class PDFGeneratorService:
             PDFRenderingError: If rendering a section's content, or
                 building the document itself, unexpectedly fails.
         """
-        validate_tenant_context(tenant_context, service_name="PDFGeneratorService", operation="generate_pdf")
+        # Sprint 6.4 -- Observability & Monitoring Service: wraps tenant
+        # validation + the (unchanged) rendering below so a start,
+        # completion/failure, and duration are always recorded, without
+        # PDFGeneratorService knowing how or where those events are stored.
+        with monitoring_service.time_operation(
+            service_name="PDFGeneratorService", operation="generate_pdf", tenant_context=tenant_context
+        ):
+            validate_tenant_context(tenant_context, service_name="PDFGeneratorService", operation="generate_pdf")
 
-        if not isinstance(report, Report):
-            raise InvalidReportInputError(report)
-        if branding is None:
-            branding = PDFBrandingConfig()
-        elif not isinstance(branding, PDFBrandingConfig):
-            raise InvalidBrandingConfigError(branding)
+            if not isinstance(report, Report):
+                raise InvalidReportInputError(report)
+            if branding is None:
+                branding = PDFBrandingConfig()
+            elif not isinstance(branding, PDFBrandingConfig):
+                raise InvalidBrandingConfigError(branding)
 
-        styles = _build_styles(branding)
-        story: list = []
+            styles = _build_styles(branding)
+            story: list = []
 
-        if branding.show_cover_page:
-            story.extend(_build_cover_page(report, branding, styles))
-            story.append(PageBreak())
+            if branding.show_cover_page:
+                story.extend(_build_cover_page(report, branding, styles))
+                story.append(PageBreak())
 
-        if branding.show_table_of_contents:
-            story.extend(_build_table_of_contents(styles))
-            story.append(PageBreak())
-
-        if report.is_empty():
-            story.append(Paragraph("No data is available for this report.", styles["body"]))
-        else:
-            for section in report.sections:
-                story.extend(self._render_section(section, branding, styles))
-                story.append(Spacer(1, 0.6 * cm))
-
-        page_size = A4 if branding.page_size.strip().upper() == "A4" else letter
-        buffer = BytesIO()
-        doc_cls = _TOCDocTemplate if branding.show_table_of_contents else SimpleDocTemplate
-        doc = doc_cls(
-            buffer,
-            pagesize=page_size,
-            leftMargin=2 * cm,
-            rightMargin=2 * cm,
-            topMargin=2 * cm,
-            bottomMargin=2 * cm,
-            title=str(report.metadata.title),
-            author=branding.company_name,
-        )
-        decorate_page = _make_page_decorator(branding)
-
-        try:
             if branding.show_table_of_contents:
-                doc.multiBuild(story, onFirstPage=decorate_page, onLaterPages=decorate_page)
-            else:
-                doc.build(story, onFirstPage=decorate_page, onLaterPages=decorate_page)
-        except PDFGeneratorServiceError:
-            raise
-        except Exception as exc:  # noqa: BLE001 -- deliberately wrapped, see PDFRenderingError
-            raise PDFRenderingError("document", exc) from exc
+                story.extend(_build_table_of_contents(styles))
+                story.append(PageBreak())
 
-        return PDFResult(content=buffer.getvalue(), page_count=doc.page)
+            if report.is_empty():
+                story.append(Paragraph("No data is available for this report.", styles["body"]))
+            else:
+                for section in report.sections:
+                    story.extend(self._render_section(section, branding, styles))
+                    story.append(Spacer(1, 0.6 * cm))
+
+            page_size = A4 if branding.page_size.strip().upper() == "A4" else letter
+            buffer = BytesIO()
+            doc_cls = _TOCDocTemplate if branding.show_table_of_contents else SimpleDocTemplate
+            doc = doc_cls(
+                buffer,
+                pagesize=page_size,
+                leftMargin=2 * cm,
+                rightMargin=2 * cm,
+                topMargin=2 * cm,
+                bottomMargin=2 * cm,
+                title=str(report.metadata.title),
+                author=branding.company_name,
+            )
+            decorate_page = _make_page_decorator(branding)
+
+            try:
+                if branding.show_table_of_contents:
+                    doc.multiBuild(story, onFirstPage=decorate_page, onLaterPages=decorate_page)
+                else:
+                    doc.build(story, onFirstPage=decorate_page, onLaterPages=decorate_page)
+            except PDFGeneratorServiceError:
+                raise
+            except Exception as exc:  # noqa: BLE001 -- deliberately wrapped, see PDFRenderingError
+                raise PDFRenderingError("document", exc) from exc
+
+            return PDFResult(content=buffer.getvalue(), page_count=doc.page)
 
     # ------------------------------------------------------------------
     # Internal helpers

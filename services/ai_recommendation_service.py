@@ -58,6 +58,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING, Callable, Iterable, Mapping, Protocol, runtime_checkable
 
+from monitoring.service import monitoring_service
 from tenancy.context import TenantContext, validate_tenant_context
 from utils.formatting import format_currency
 from utils.insights import BusinessInsights
@@ -657,23 +658,33 @@ class AIRecommendationService:
             RecommendationProviderError: If the active provider raises
                 while generating recommendations.
         """
-        validate_tenant_context(tenant_context, service_name="AIRecommendationService", operation="generate_recommendations")
+        # Sprint 6.4 -- Observability & Monitoring Service: wraps tenant
+        # validation + the (unchanged) analysis below so a start,
+        # completion/failure, and duration are always recorded, without
+        # AIRecommendationService knowing how or where those events are
+        # stored.
+        with monitoring_service.time_operation(
+            service_name="AIRecommendationService", operation="generate_recommendations", tenant_context=tenant_context
+        ):
+            validate_tenant_context(
+                tenant_context, service_name="AIRecommendationService", operation="generate_recommendations"
+            )
 
-        if not isinstance(context, RecommendationContext):
-            raise InvalidRecommendationContextError(context)
+            if not isinstance(context, RecommendationContext):
+                raise InvalidRecommendationContextError(context)
 
-        try:
-            recommendations = list(self._provider.generate(context))
-        except AIRecommendationServiceError:
-            raise
-        except Exception as exc:  # noqa: BLE001 - re-raised as a domain exception below
-            raise RecommendationProviderError(self.provider_name, exc) from exc
+            try:
+                recommendations = list(self._provider.generate(context))
+            except AIRecommendationServiceError:
+                raise
+            except Exception as exc:  # noqa: BLE001 - re-raised as a domain exception below
+                raise RecommendationProviderError(self.provider_name, exc) from exc
 
-        return RecommendationBatch(
-            recommendations=tuple(recommendations),
-            provider_name=self.provider_name,
-            generated_at=datetime.now(timezone.utc),
-        )
+            return RecommendationBatch(
+                recommendations=tuple(recommendations),
+                provider_name=self.provider_name,
+                generated_at=datetime.now(timezone.utc),
+            )
 
     @staticmethod
     def _validate_provider(provider: object) -> None:

@@ -32,6 +32,7 @@ from typing import Callable
 
 import pandas as pd
 
+from monitoring.service import monitoring_service
 from tenancy.context import TenantContext, validate_tenant_context
 
 
@@ -211,13 +212,20 @@ class ExportService:
             UnsupportedExportFormatError: If ``export_format`` isn't
                 registered.
         """
-        validate_tenant_context(tenant_context, service_name="ExportService", operation="export")
+        # Sprint 6.4 -- Observability & Monitoring Service: wraps tenant
+        # validation + the (unchanged) dispatch below so a start,
+        # completion/failure, and duration are always recorded, without
+        # ExportService knowing how or where those events are stored.
+        with monitoring_service.time_operation(
+            service_name="ExportService", operation="export", tenant_context=tenant_context
+        ):
+            validate_tenant_context(tenant_context, service_name="ExportService", operation="export")
 
-        key = export_format.strip().lower()
-        exporter = self._registry.get(key)
-        if exporter is None:
-            raise UnsupportedExportFormatError(export_format, tuple(self._registry.keys()))
-        return exporter(df)
+            key = export_format.strip().lower()
+            exporter = self._registry.get(key)
+            if exporter is None:
+                raise UnsupportedExportFormatError(export_format, tuple(self._registry.keys()))
+            return exporter(df)
 
     def supported_formats(self) -> tuple[str, ...]:
         """Return every export format key currently registered.
