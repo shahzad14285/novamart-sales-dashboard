@@ -21,6 +21,8 @@ import pandas as pd
 import streamlit as st
 
 from components.empty_state import render_empty_state
+from tenancy.context import TenantContext
+from tenancy.exceptions import TenantContextError
 from utils.formatting import format_currency, format_date, format_integer, format_percentage
 from utils.insights import BusinessInsights, generate_business_insights
 
@@ -32,6 +34,8 @@ def render_business_insights(
     orders_col: str = "orders",
     product_col: str = "product",
     region_col: str = "region",
+    *,
+    tenant_context: TenantContext | None = None,
 ) -> None:
     """Render the Business Insights panel for the filtered dataset.
 
@@ -42,19 +46,28 @@ def render_business_insights(
         orders_col: Column holding order counts.
         product_col: Column holding product names, if present.
         region_col: Column holding region names, if present.
+        tenant_context: The active tenant these insights are scoped to
+            (Multi-Tenant Sprint 6.3). A missing/inactive tenant is
+            shown as a friendly message, matching how this component
+            already handles "no data yet".
     """
     if df is None or df.empty:
         render_empty_state("No data available for business insights yet.", icon="💡")
         return
 
-    insights = generate_business_insights(
-        df,
-        date_col=date_col,
-        revenue_col=revenue_col,
-        orders_col=orders_col,
-        product_col=product_col,
-        region_col=region_col,
-    )
+    try:
+        insights = generate_business_insights(
+            df,
+            date_col=date_col,
+            revenue_col=revenue_col,
+            orders_col=orders_col,
+            product_col=product_col,
+            region_col=region_col,
+            tenant_context=tenant_context,
+        )
+    except TenantContextError as exc:
+        st.error(str(exc), icon="🔒")
+        return
 
     st.caption("Executive-level observations calculated automatically from the filtered dataset.")
     render_business_insights_from_value(insights)

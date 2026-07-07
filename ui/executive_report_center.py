@@ -95,6 +95,7 @@ from components.analytics import render_business_insights_from_value
 from components.empty_state import render_empty_state
 from components.filter_panel import render_filter_panel
 from components.kpi_cards import render_kpi_cards
+from components.tenant_selector import get_active_tenant_context
 from components.upload_center import render_upload_center
 from services.ai_recommendation_service import (
     AIRecommendationServiceError,
@@ -113,6 +114,8 @@ from services.reporting_service import (
     ReportType,
     sales_reporting_service,
 )
+from tenancy.context import TenantContext, validate_tenant_context
+from tenancy.exceptions import TenantContextError
 from utils.analytics import calculate_revenue_by_group
 from utils.filters import detect_available_filters
 from utils.formatting import format_currency
@@ -146,7 +149,9 @@ _PRIORITY_BADGES: dict[RecommendationPriority, str] = {
 _PREFERRED_EXPORT_FORMAT_ORDER: tuple[str, ...] = ("csv", "excel", "json")
 
 
-def render_executive_report_center(df: pd.DataFrame | None = None) -> None:
+def render_executive_report_center(
+    df: pd.DataFrame | None = None, *, tenant_context: TenantContext | None = None
+) -> None:
     """Render the full Executive Report Center screen.
 
     Args:
@@ -154,7 +159,20 @@ def render_executive_report_center(df: pd.DataFrame | None = None) -> None:
             not given, this component renders its own Upload Center
             and Filter Panel (mirroring the Dashboard page) to obtain
             one, so it can be dropped onto a page on its own.
+        tenant_context: The active tenant this screen is scoped to
+            (Multi-Tenant Sprint 6.3). If not given, resolved from the
+            current session via
+            :func:`~components.tenant_selector.get_active_tenant_context`
+            (the same tenant the sidebar's selector already set),
+            mirroring how ``df`` falls back to self-acquisition when
+            not supplied. Validated once, up front, before anything --
+            including the Upload Center -- is rendered: a missing or
+            inactive tenant stops the whole screen with a single,
+            business-friendly message rather than failing partway
+            through one tab.
     """
+    tenant_context = tenant_context if tenant_context is not None else get_active_tenant_context()
+
     st.markdown('<p class="nm-section-title">📑 Executive Report Center</p>', unsafe_allow_html=True)
     st.markdown(
         '<p class="nm-section-subtitle">Assemble an executive report, review AI-generated '
@@ -162,7 +180,17 @@ def render_executive_report_center(df: pd.DataFrame | None = None) -> None:
         unsafe_allow_html=True,
     )
 
-    working_df = df if df is not None else _acquire_dataset()
+    try:
+        tenant = validate_tenant_context(
+            tenant_context, service_name="ExecutiveReportCenter", operation="render_executive_report_center"
+        )
+    except TenantContextError as exc:
+        st.error(str(exc), icon="🔒")
+        return
+
+    st.caption(f"Organization: **{tenant.display_name}**")
+
+    working_df = df if df is not None else _acquire_dataset(tenant_context)
     if working_df is None or working_df.empty:
         render_empty_state(
             "Upload a dataset above to build an executive report, review AI "
@@ -174,9 +202,9 @@ def render_executive_report_center(df: pd.DataFrame | None = None) -> None:
     st.divider()
     report_type, prepared_for = _render_report_controls()
 
-    context = _build_report_context(working_df, report_type, prepared_for)
+    context = _build_report_context(working_df, report_type, prepared_for, tenant_context)
     try:
-        report = sales_reporting_service.generate_report(report_type, context)
+        report = sales_reporting_service.generate_report(report_type, context, tenant_context=tenant_context)
     except ReportingServiceError as exc:
         st.error(f"Unable to assemble the report: {exc}", icon="⚠️")
         return
@@ -187,11 +215,11 @@ def render_executive_report_center(df: pd.DataFrame | None = None) -> None:
     with report_tab:
         _render_report_tab(report)
     with recommendations_tab:
-        _render_recommendations_tab(context, report)
+        _render_recommendations_tab(context, report, tenant_context)
     with pdf_tab:
-        _render_pdf_export_tab(report, row_count=len(working_df))
+        _render_pdf_export_tab(report, row_count=len(working_df), tenant_context=tenant_context)
     with export_tab:
-        _render_data_export_tab(working_df)
+        _render_data_export_tab(working_df, tenant_context)
 
 
 # ==============================================================================
@@ -199,13 +227,16 @@ def render_executive_report_center(df: pd.DataFrame | None = None) -> None:
 # ==============================================================================
 
 
-def _acquire_dataset() -> pd.DataFrame | None:
+def _acquire_dataset(tenant_context: TenantContext) -> pd.DataFrame | None:
     """Obtain a filtered dataset via the existing Upload Center + Filter Panel.
 
     Reuses the same two components the Dashboard page already uses,
     with widget keys scoped to this module, so both pages can be open
     in the same session without key collisions. Neither component's
     upload/validation/filtering logic is reimplemented here.
+
+    Args:
+        tenant_context: The active tenant this upload belongs to.
 
     Returns:
         The filtered DataFrame, or ``None`` if nothing has been
@@ -215,6 +246,7 @@ def _acquire_dataset() -> pd.DataFrame | None:
         title="Report Data",
         description="Upload the CSV or Excel file this report should be built from.",
         key=_UPLOAD_KEY,
+        tenant_context=tenant_context,
     )
     if uploaded_df is None:
         return None
@@ -267,7 +299,9 @@ def _report_type_label(report_type_key: str) -> str:
     return f"{icon} {title} Report"
 
 
-def _build_report_context(df: pd.DataFrame, report_type_key: str, prepared_for: str) -> ReportContext:
+def _build_report_context(
+    df: pd.DataFrame, report_type_key: str, prepared_for: str, tenant_context: TenantContext
+) -> ReportContext:
     """Build a :class:`ReportContext` by invoking existing calculation entry points.
 
     Every value assembled here comes from a function that already
@@ -282,12 +316,13 @@ def _build_report_context(df: pd.DataFrame, report_type_key: str, prepared_for: 
         report_type_key: The selected report type, used only to build a
             matching metadata title when ``prepared_for`` is set.
         prepared_for: Optional audience text from the report controls.
+        tenant_context: The active tenant this context is scoped to.
 
     Returns:
         A populated :class:`ReportContext`.
     """
-    kpi_results = sales_kpi_engine.calculate_all(df)
-    business_insights = generate_business_insights(df)
+    kpi_results = sales_kpi_engine.calculate_all(df, tenant_context=tenant_context)
+    business_insights = generate_business_insights(df, tenant_context=tenant_context)
 
     available = detect_available_filters(df, columns={"product": "product", "region": "region"})
     regional_summary = calculate_revenue_by_group(df, "region") if available["region"].available else None
@@ -400,7 +435,7 @@ def _render_group_summary(summary: dict[str, float]) -> None:
 # ==============================================================================
 
 
-def _render_recommendations_tab(context: ReportContext, report: Report) -> None:
+def _render_recommendations_tab(context: ReportContext, report: Report, tenant_context: TenantContext) -> None:
     """Render AI-generated recommendations built from the same context as the report."""
     st.caption(
         "Generated by the AI Recommendation Service from the same KPI results "
@@ -413,7 +448,9 @@ def _render_recommendations_tab(context: ReportContext, report: Report) -> None:
         report=report,
     )
     try:
-        batch = sales_ai_recommendation_service.generate_recommendations(recommendation_context)
+        batch = sales_ai_recommendation_service.generate_recommendations(
+            recommendation_context, tenant_context=tenant_context
+        )
     except AIRecommendationServiceError as exc:
         st.error(f"Unable to generate AI recommendations: {exc}", icon="⚠️")
         return
@@ -443,7 +480,7 @@ def _render_recommendation_card(recommendation: Recommendation) -> None:
 # ==============================================================================
 
 
-def _render_pdf_export_tab(report: Report, row_count: int) -> None:
+def _render_pdf_export_tab(report: Report, row_count: int, tenant_context: TenantContext) -> None:
     """Render PDF branding options, a Generate button, and the resulting download."""
     st.caption("Generated by the PDF Generator Service from the report above.")
 
@@ -465,7 +502,9 @@ def _render_pdf_export_tab(report: Report, row_count: int) -> None:
             show_table_of_contents=show_table_of_contents,
         )
         try:
-            pdf_result = sales_pdf_generator_service.generate_pdf(report, branding=branding)
+            pdf_result = sales_pdf_generator_service.generate_pdf(
+                report, branding=branding, tenant_context=tenant_context
+            )
             st.session_state[_PDF_RESULT_STATE_KEY] = (_cache_tag(report, row_count), pdf_result)
         except PDFGeneratorServiceError as exc:
             st.session_state.pop(_PDF_RESULT_STATE_KEY, None)
@@ -494,7 +533,7 @@ def _render_pdf_export_tab(report: Report, row_count: int) -> None:
 # ==============================================================================
 
 
-def _render_data_export_tab(df: pd.DataFrame) -> None:
+def _render_data_export_tab(df: pd.DataFrame, tenant_context: TenantContext) -> None:
     """Render an export-format selector, an Export button, and the resulting download."""
     st.caption("Generated by the Export Service from the filtered dataset used to build the report.")
 
@@ -507,7 +546,7 @@ def _render_data_export_tab(df: pd.DataFrame) -> None:
 
     if st.button("Export data", key="executive_report_center_export_button"):
         try:
-            export_result = sales_export_service.export(df, export_format)
+            export_result = sales_export_service.export(df, export_format, tenant_context=tenant_context)
             st.session_state[_EXPORT_RESULT_STATE_KEY] = ((export_format, len(df)), export_result)
         except ExportServiceError as exc:
             st.session_state.pop(_EXPORT_RESULT_STATE_KEY, None)

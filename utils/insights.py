@@ -34,6 +34,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from tenancy.context import TenantContext, validate_tenant_context
 from utils.analytics import calculate_revenue_by_group, calculate_revenue_concentration
 from utils.calculations import (
     calculate_total_orders,
@@ -211,6 +212,8 @@ def generate_business_insights(
     orders_col: str = "orders",
     product_col: str = "product",
     region_col: str = "region",
+    *,
+    tenant_context: TenantContext | None = None,
 ) -> BusinessInsights:
     """Compute the full set of executive-level insights for a dataset.
 
@@ -229,12 +232,24 @@ def generate_business_insights(
         orders_col: Column holding order counts.
         product_col: Column holding product names, if present.
         region_col: Column holding region names, if present.
+        tenant_context: The tenant these insights are scoped to
+            (Multi-Tenant Sprint 6.3). Required for the call to
+            succeed -- see :func:`~tenancy.context.validate_tenant_context`.
+            The insight formulas themselves never change per tenant;
+            this only guarantees every calculation is attributable to,
+            and gated on, an active tenant.
 
     Returns:
         A fully populated :class:`BusinessInsights` value object. If
         ``df`` is ``None`` or empty, every numeric field is zeroed and
         every optional dimension is marked unavailable.
+
+    Raises:
+        MissingTenantContextError: If no tenant context was supplied.
+        InactiveTenantError: If the supplied tenant is not active.
     """
+    validate_tenant_context(tenant_context, service_name="BusinessInsights", operation="generate_business_insights")
+
     if df is None or df.empty:
         return BusinessInsights(
             total_revenue=0.0,

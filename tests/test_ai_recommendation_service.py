@@ -4,6 +4,13 @@ Inputs are built from the real utils.kpi_engine / utils.insights /
 services.reporting_service modules (with pandas) so the AI
 Recommendation Service is exercised against the exact value objects it
 will receive in production, not hand-rolled stand-ins.
+
+Multi-Tenant Sprint 6.3 note: every ``calculate_all`` / ``generate_business_insights``
+/ ``generate_report`` / ``generate_recommendations`` call below now requires a
+``tenant_context`` keyword argument -- see the ``tenant_context`` fixture --
+since tenant validation is now mandatory before any of these services will
+process a request. Business-logic assertions are otherwise unchanged from
+before the multi-tenant sprint.
 """
 
 from __future__ import annotations
@@ -27,8 +34,17 @@ from services.ai_recommendation_service import (
     sales_ai_recommendation_service,
 )
 from services.reporting_service import ReportContext, ReportingService, ReportMetadata, ReportType
+from tenancy.context import TenantContext
+from tenancy.exceptions import InactiveTenantError, MissingTenantContextError
+from tenancy.models import Tenant, TenantStatus
 from utils.insights import generate_business_insights
 from utils.kpi_engine import sales_kpi_engine
+
+
+@pytest.fixture
+def tenant_context() -> TenantContext:
+    """A valid, active TenantContext shared by every test in this file."""
+    return TenantContext(tenant=Tenant(tenant_id="test-tenant", name="test-tenant", display_name="Test Tenant"))
 
 
 @pytest.fixture
@@ -68,9 +84,9 @@ def concentrated_df() -> pd.DataFrame:
 
 
 @pytest.fixture
-def full_context(concentrated_df: pd.DataFrame) -> RecommendationContext:
-    kpi_results = sales_kpi_engine.calculate_all(concentrated_df)
-    insights = generate_business_insights(concentrated_df)
+def full_context(concentrated_df: pd.DataFrame, tenant_context: TenantContext) -> RecommendationContext:
+    kpi_results = sales_kpi_engine.calculate_all(concentrated_df, tenant_context=tenant_context)
+    insights = generate_business_insights(concentrated_df, tenant_context=tenant_context)
     return RecommendationContext(kpi_results=kpi_results, business_insights=insights)
 
 
@@ -85,9 +101,11 @@ def test_default_provider_is_rule_based() -> None:
     assert isinstance(service._provider, RuleBasedRecommendationProvider)  # noqa: SLF001
 
 
-def test_generate_recommendations_returns_batch(full_context: RecommendationContext) -> None:
+def test_generate_recommendations_returns_batch(
+    full_context: RecommendationContext, tenant_context: TenantContext
+) -> None:
     service = AIRecommendationService()
-    batch = service.generate_recommendations(full_context)
+    batch = service.generate_recommendations(full_context, tenant_context=tenant_context)
 
     assert isinstance(batch, RecommendationBatch)
     assert batch.provider_name == "Rule-Based Engine"
@@ -101,10 +119,10 @@ def test_generate_recommendations_returns_batch(full_context: RecommendationCont
 
 
 def test_concentrated_dataset_triggers_high_priority_concentration_risk(
-    full_context: RecommendationContext,
+    full_context: RecommendationContext, tenant_context: TenantContext
 ) -> None:
     service = AIRecommendationService()
-    batch = service.generate_recommendations(full_context)
+    batch = service.generate_recommendations(full_context, tenant_context=tenant_context)
 
     titles = [r.title for r in batch.recommendations]
     assert "Revenue Concentration Risk" in titles
@@ -114,9 +132,11 @@ def test_concentrated_dataset_triggers_high_priority_concentration_risk(
     assert "Widget" in concentration_rec.observation
 
 
-def test_concentrated_dataset_triggers_underperforming_product(full_context: RecommendationContext) -> None:
+def test_concentrated_dataset_triggers_underperforming_product(
+    full_context: RecommendationContext, tenant_context: TenantContext
+) -> None:
     service = AIRecommendationService()
-    batch = service.generate_recommendations(full_context)
+    batch = service.generate_recommendations(full_context, tenant_context=tenant_context)
 
     titles = [r.title for r in batch.recommendations]
     assert "Underperforming Product Identified" in titles
@@ -124,39 +144,45 @@ def test_concentrated_dataset_triggers_underperforming_product(full_context: Rec
     assert "Gizmo" in rec.observation
 
 
-def test_concentrated_dataset_triggers_regional_imbalance(full_context: RecommendationContext) -> None:
+def test_concentrated_dataset_triggers_regional_imbalance(
+    full_context: RecommendationContext, tenant_context: TenantContext
+) -> None:
     service = AIRecommendationService()
-    batch = service.generate_recommendations(full_context)
+    batch = service.generate_recommendations(full_context, tenant_context=tenant_context)
 
     titles = [r.title for r in batch.recommendations]
     assert "Regional Performance Imbalance" in titles
 
 
-def test_concentrated_dataset_triggers_revenue_day_volatility(full_context: RecommendationContext) -> None:
+def test_concentrated_dataset_triggers_revenue_day_volatility(
+    full_context: RecommendationContext, tenant_context: TenantContext
+) -> None:
     service = AIRecommendationService()
-    batch = service.generate_recommendations(full_context)
+    batch = service.generate_recommendations(full_context, tenant_context=tenant_context)
 
     titles = [r.title for r in batch.recommendations]
     assert "High Day-to-Day Revenue Volatility" in titles
 
 
 def test_overall_performance_summary_always_present_when_insights_given(
-    full_context: RecommendationContext,
+    full_context: RecommendationContext, tenant_context: TenantContext
 ) -> None:
     service = AIRecommendationService()
-    batch = service.generate_recommendations(full_context)
+    batch = service.generate_recommendations(full_context, tenant_context=tenant_context)
 
     titles = [r.title for r in batch.recommendations]
     assert "Overall Performance Summary" in titles
 
 
-def test_balanced_dataset_does_not_trigger_risk_rules(balanced_df: pd.DataFrame) -> None:
+def test_balanced_dataset_does_not_trigger_risk_rules(
+    balanced_df: pd.DataFrame, tenant_context: TenantContext
+) -> None:
     context = RecommendationContext(
-        kpi_results=sales_kpi_engine.calculate_all(balanced_df),
-        business_insights=generate_business_insights(balanced_df),
+        kpi_results=sales_kpi_engine.calculate_all(balanced_df, tenant_context=tenant_context),
+        business_insights=generate_business_insights(balanced_df, tenant_context=tenant_context),
     )
     service = AIRecommendationService()
-    batch = service.generate_recommendations(context)
+    batch = service.generate_recommendations(context, tenant_context=tenant_context)
 
     titles = {r.title for r in batch.recommendations}
     assert "Revenue Concentration Risk" not in titles
@@ -167,7 +193,7 @@ def test_balanced_dataset_does_not_trigger_risk_rules(balanced_df: pd.DataFrame)
     assert "Overall Performance Summary" in titles
 
 
-def test_headline_kpi_snapshot_used_when_insights_missing() -> None:
+def test_headline_kpi_snapshot_used_when_insights_missing(tenant_context: TenantContext) -> None:
     balanced = pd.DataFrame(
         {
             "date": pd.date_range("2026-01-01", periods=3, freq="D"),
@@ -175,9 +201,11 @@ def test_headline_kpi_snapshot_used_when_insights_missing() -> None:
             "orders": [1, 2, 3],
         }
     )
-    context = RecommendationContext(kpi_results=sales_kpi_engine.calculate_all(balanced))
+    context = RecommendationContext(
+        kpi_results=sales_kpi_engine.calculate_all(balanced, tenant_context=tenant_context)
+    )
     service = AIRecommendationService()
-    batch = service.generate_recommendations(context)
+    batch = service.generate_recommendations(context, tenant_context=tenant_context)
 
     titles = [r.title for r in batch.recommendations]
     assert "Headline KPI Snapshot" in titles
@@ -185,7 +213,7 @@ def test_headline_kpi_snapshot_used_when_insights_missing() -> None:
 
 
 def test_report_period_context_included_when_report_has_period_label(
-    full_context: RecommendationContext,
+    full_context: RecommendationContext, tenant_context: TenantContext
 ) -> None:
     report_context = ReportContext(
         kpi_results=full_context.kpi_results,
@@ -196,14 +224,14 @@ def test_report_period_context_included_when_report_has_period_label(
             period_label="Week of Jul 1-7",
         ),
     )
-    report = ReportingService().generate_report(ReportType.WEEKLY, report_context)
+    report = ReportingService().generate_report(ReportType.WEEKLY, report_context, tenant_context=tenant_context)
     context_with_report = RecommendationContext(
         kpi_results=full_context.kpi_results,
         business_insights=full_context.business_insights,
         report=report,
     )
     service = AIRecommendationService()
-    batch = service.generate_recommendations(context_with_report)
+    batch = service.generate_recommendations(context_with_report, tenant_context=tenant_context)
 
     titles = [r.title for r in batch.recommendations]
     assert "Reporting Period Context" in titles
@@ -216,9 +244,9 @@ def test_report_period_context_included_when_report_has_period_label(
 # --------------------------------------------------------------------------
 
 
-def test_completely_empty_context_returns_empty_batch_not_an_error() -> None:
+def test_completely_empty_context_returns_empty_batch_not_an_error(tenant_context: TenantContext) -> None:
     service = AIRecommendationService()
-    batch = service.generate_recommendations(RecommendationContext())
+    batch = service.generate_recommendations(RecommendationContext(), tenant_context=tenant_context)
 
     assert isinstance(batch, RecommendationBatch)
     assert batch.is_empty()
@@ -230,10 +258,10 @@ def test_completely_empty_context_returns_empty_batch_not_an_error() -> None:
 # --------------------------------------------------------------------------
 
 
-def test_invalid_context_type_raises() -> None:
+def test_invalid_context_type_raises(tenant_context: TenantContext) -> None:
     service = AIRecommendationService()
     with pytest.raises(InvalidRecommendationContextError):
-        service.generate_recommendations({"kpi_results": {}})  # type: ignore[arg-type]
+        service.generate_recommendations({"kpi_results": {}}, tenant_context=tenant_context)  # type: ignore[arg-type]
 
 
 def test_invalid_provider_in_constructor_raises() -> None:
@@ -271,7 +299,9 @@ def test_custom_provider_satisfies_protocol_via_structural_typing() -> None:
     assert isinstance(_StubProvider(), RecommendationProvider)
 
 
-def test_swapping_provider_changes_output_with_no_service_changes(full_context: RecommendationContext) -> None:
+def test_swapping_provider_changes_output_with_no_service_changes(
+    full_context: RecommendationContext, tenant_context: TenantContext
+) -> None:
     custom_recommendation = Recommendation(
         title="Custom Insight",
         observation="Generated by a stand-in for a future GPT/Claude/Gemini provider.",
@@ -279,28 +309,30 @@ def test_swapping_provider_changes_output_with_no_service_changes(full_context: 
         priority=RecommendationPriority.LOW,
     )
     service = AIRecommendationService(provider=_StubProvider(recommendations=[custom_recommendation]))
-    batch = service.generate_recommendations(full_context)
+    batch = service.generate_recommendations(full_context, tenant_context=tenant_context)
 
     assert batch.provider_name == "Stub Provider"
     assert batch.recommendations == (custom_recommendation,)
 
 
-def test_set_provider_swaps_at_runtime(full_context: RecommendationContext) -> None:
+def test_set_provider_swaps_at_runtime(
+    full_context: RecommendationContext, tenant_context: TenantContext
+) -> None:
     service = AIRecommendationService()
     assert service.provider_name == "Rule-Based Engine"
 
     service.set_provider(_StubProvider())
     assert service.provider_name == "Stub Provider"
-    batch = service.generate_recommendations(full_context)
+    batch = service.generate_recommendations(full_context, tenant_context=tenant_context)
     assert batch.recommendations == ()
 
 
 def test_provider_exception_is_wrapped_in_recommendation_provider_error(
-    full_context: RecommendationContext,
+    full_context: RecommendationContext, tenant_context: TenantContext
 ) -> None:
     service = AIRecommendationService(provider=_StubProvider(raise_error=True))
     with pytest.raises(RecommendationProviderError) as exc_info:
-        service.generate_recommendations(full_context)
+        service.generate_recommendations(full_context, tenant_context=tenant_context)
 
     assert exc_info.value.provider_name == "Stub Provider"
     assert isinstance(exc_info.value.original_error, RuntimeError)
@@ -311,9 +343,11 @@ def test_provider_exception_is_wrapped_in_recommendation_provider_error(
 # --------------------------------------------------------------------------
 
 
-def test_filter_by_priority_and_category(full_context: RecommendationContext) -> None:
+def test_filter_by_priority_and_category(
+    full_context: RecommendationContext, tenant_context: TenantContext
+) -> None:
     service = AIRecommendationService()
-    batch = service.generate_recommendations(full_context)
+    batch = service.generate_recommendations(full_context, tenant_context=tenant_context)
 
     high_priority = batch.filter_by_priority(RecommendationPriority.HIGH)
     assert all(r.priority == RecommendationPriority.HIGH for r in high_priority)
@@ -323,9 +357,11 @@ def test_filter_by_priority_and_category(full_context: RecommendationContext) ->
     assert all(r.category == "products" for r in product_recs)
 
 
-def test_highest_priority_first_orders_high_before_low(full_context: RecommendationContext) -> None:
+def test_highest_priority_first_orders_high_before_low(
+    full_context: RecommendationContext, tenant_context: TenantContext
+) -> None:
     service = AIRecommendationService()
-    batch = service.generate_recommendations(full_context)
+    batch = service.generate_recommendations(full_context, tenant_context=tenant_context)
     ordered = batch.highest_priority_first()
 
     priorities = [r.priority for r in ordered]
@@ -343,6 +379,42 @@ def test_shared_instance_is_an_ai_recommendation_service() -> None:
     assert isinstance(sales_ai_recommendation_service, AIRecommendationService)
 
 
-def test_shared_instance_generates_recommendations(full_context: RecommendationContext) -> None:
-    batch = sales_ai_recommendation_service.generate_recommendations(full_context)
+def test_shared_instance_generates_recommendations(
+    full_context: RecommendationContext, tenant_context: TenantContext
+) -> None:
+    batch = sales_ai_recommendation_service.generate_recommendations(full_context, tenant_context=tenant_context)
     assert isinstance(batch, RecommendationBatch)
+
+
+# --------------------------------------------------------------------------
+# Multi-Tenant Sprint 6.3 -- tenant validation on generate_recommendations()
+# --------------------------------------------------------------------------
+
+
+def test_generate_recommendations_without_tenant_context_raises(full_context: RecommendationContext) -> None:
+    service = AIRecommendationService()
+    with pytest.raises(MissingTenantContextError):
+        service.generate_recommendations(full_context)
+
+
+def test_generate_recommendations_with_inactive_tenant_raises(full_context: RecommendationContext) -> None:
+    inactive_context = TenantContext(
+        tenant=Tenant(
+            tenant_id="inactive-tenant", name="inactive-tenant", display_name="Inactive Co", status=TenantStatus.INACTIVE
+        )
+    )
+    service = AIRecommendationService()
+    with pytest.raises(InactiveTenantError):
+        service.generate_recommendations(full_context, tenant_context=inactive_context)
+
+
+def test_generate_recommendations_error_message_is_business_friendly_and_has_no_technical_detail() -> None:
+    service = AIRecommendationService()
+    try:
+        service.generate_recommendations(RecommendationContext())
+    except MissingTenantContextError as exc:
+        assert str(exc) == "Tenant context is missing. Unable to process request."
+        assert "Traceback" not in str(exc)
+        assert "AIRecommendationService" not in str(exc)
+    else:
+        pytest.fail("Expected MissingTenantContextError")

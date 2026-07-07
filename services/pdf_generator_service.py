@@ -98,6 +98,7 @@ from reportlab.platypus import (
 from reportlab.platypus.tableofcontents import TableOfContents
 
 from services.reporting_service import Report, ReportSection
+from tenancy.context import TenantContext, validate_tenant_context
 from utils.formatting import format_currency, format_date, format_integer
 from utils.insights import BusinessInsights
 from utils.kpi_engine import KPIResult
@@ -563,7 +564,13 @@ class PDFGeneratorService:
     # ------------------------------------------------------------------
     # Public API -- PDF generation
     # ------------------------------------------------------------------
-    def generate_pdf(self, report: Report, branding: PDFBrandingConfig | None = None) -> PDFResult:
+    def generate_pdf(
+        self,
+        report: Report,
+        branding: PDFBrandingConfig | None = None,
+        *,
+        tenant_context: TenantContext | None = None,
+    ) -> PDFResult:
         """Render ``report`` into a PDF document.
 
         Args:
@@ -573,17 +580,27 @@ class PDFGeneratorService:
             branding: Optional presentation/branding options. Defaults
                 to :class:`PDFBrandingConfig`'s defaults (cover page and
                 page numbers on, no watermark or table of contents).
+            tenant_context: The tenant this PDF is scoped to
+                (Multi-Tenant Sprint 6.3). Required for the call to
+                succeed -- see :func:`~tenancy.context.validate_tenant_context`.
+                Rendering itself never varies by tenant; this only
+                guarantees every PDF is attributable to, and gated on,
+                an active tenant.
 
         Returns:
             A :class:`PDFResult` with the generated PDF bytes and page count.
 
         Raises:
+            MissingTenantContextError: If no tenant context was supplied.
+            InactiveTenantError: If the supplied tenant is not active.
             InvalidReportInputError: If ``report`` isn't a :class:`Report`.
             InvalidBrandingConfigError: If ``branding`` isn't a
                 :class:`PDFBrandingConfig` (when provided).
             PDFRenderingError: If rendering a section's content, or
                 building the document itself, unexpectedly fails.
         """
+        validate_tenant_context(tenant_context, service_name="PDFGeneratorService", operation="generate_pdf")
+
         if not isinstance(report, Report):
             raise InvalidReportInputError(report)
         if branding is None:

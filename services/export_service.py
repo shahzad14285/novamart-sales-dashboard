@@ -32,6 +32,8 @@ from typing import Callable
 
 import pandas as pd
 
+from tenancy.context import TenantContext, validate_tenant_context
+
 
 # ==============================================================================
 # Exceptions
@@ -177,7 +179,9 @@ class ExportService:
         """
         self._registry[export_format.strip().lower()] = exporter
 
-    def export(self, df: pd.DataFrame, export_format: str) -> ExportResult:
+    def export(
+        self, df: pd.DataFrame, export_format: str, *, tenant_context: TenantContext | None = None
+    ) -> ExportResult:
         """Export ``df`` using the exporter registered for ``export_format``.
 
         This is the single entry point most callers need -- it looks
@@ -190,15 +194,25 @@ class ExportService:
             df: The (already processed) DataFrame to export.
             export_format: Which format to export to, e.g. ``"csv"``,
                 ``"excel"``, ``"xlsx"``, or ``"json"``. Case-insensitive.
+            tenant_context: The tenant this export is scoped to
+                (Multi-Tenant Sprint 6.3). Required for the call to
+                succeed -- see :func:`~tenancy.context.validate_tenant_context`.
+                Export logic itself never varies by tenant; this only
+                guarantees every export is attributable to, and gated
+                on, an active tenant.
 
         Returns:
             An :class:`ExportResult` with the exported content.
 
         Raises:
+            MissingTenantContextError: If no tenant context was supplied.
+            InactiveTenantError: If the supplied tenant is not active.
             InvalidExportInputError: If ``df`` isn't a pandas DataFrame.
             UnsupportedExportFormatError: If ``export_format`` isn't
                 registered.
         """
+        validate_tenant_context(tenant_context, service_name="ExportService", operation="export")
+
         key = export_format.strip().lower()
         exporter = self._registry.get(key)
         if exporter is None:

@@ -9,6 +9,8 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
+from tenancy.context import TenantContext
+from tenancy.models import Tenant
 from utils.insights import (
     BusinessInsights,
     calculate_active_sales_days,
@@ -18,6 +20,12 @@ from utils.insights import (
     calculate_total_transactions,
     generate_business_insights,
 )
+
+
+@pytest.fixture
+def tenant_context() -> TenantContext:
+    """A valid, active TenantContext -- Multi-Tenant Sprint 6.3 requires one for generate_business_insights()."""
+    return TenantContext(tenant=Tenant(tenant_id="test-tenant", name="test-tenant", display_name="Test Tenant"))
 
 
 @pytest.fixture
@@ -144,8 +152,8 @@ def test_calculate_best_worst_group_empty_dataframe() -> None:
 # --------------------------------------------------------------------------
 
 
-def test_generate_business_insights_full_dataset(full_df: pd.DataFrame) -> None:
-    insights = generate_business_insights(full_df)
+def test_generate_business_insights_full_dataset(full_df: pd.DataFrame, tenant_context: TenantContext) -> None:
+    insights = generate_business_insights(full_df, tenant_context=tenant_context)
 
     assert isinstance(insights, BusinessInsights)
     assert insights.total_revenue == 2700.0
@@ -177,8 +185,8 @@ def test_generate_business_insights_full_dataset(full_df: pd.DataFrame) -> None:
     assert insights.worst_region_revenue == 200.0
 
 
-def test_generate_business_insights_minimal_dataset(minimal_df: pd.DataFrame) -> None:
-    insights = generate_business_insights(minimal_df)
+def test_generate_business_insights_minimal_dataset(minimal_df: pd.DataFrame, tenant_context: TenantContext) -> None:
+    insights = generate_business_insights(minimal_df, tenant_context=tenant_context)
 
     assert insights.total_revenue == 1000.0
     assert insights.product_insights_available is False
@@ -190,8 +198,8 @@ def test_generate_business_insights_minimal_dataset(minimal_df: pd.DataFrame) ->
     assert insights.worst_region is None
 
 
-def test_generate_business_insights_empty_dataframe() -> None:
-    insights = generate_business_insights(pd.DataFrame())
+def test_generate_business_insights_empty_dataframe(tenant_context: TenantContext) -> None:
+    insights = generate_business_insights(pd.DataFrame(), tenant_context=tenant_context)
     assert insights.total_revenue == 0.0
     assert insights.total_orders == 0
     assert insights.total_transactions == 0
@@ -202,14 +210,16 @@ def test_generate_business_insights_empty_dataframe() -> None:
     assert insights.region_insights_available is False
 
 
-def test_generate_business_insights_none_dataframe() -> None:
-    insights = generate_business_insights(None)
+def test_generate_business_insights_none_dataframe(tenant_context: TenantContext) -> None:
+    insights = generate_business_insights(None, tenant_context=tenant_context)
     assert insights.total_revenue == 0.0
     assert insights.product_insights_available is False
     assert insights.region_insights_available is False
 
 
-def test_generate_business_insights_top3_concentration_with_more_than_three_products() -> None:
+def test_generate_business_insights_top3_concentration_with_more_than_three_products(
+    tenant_context: TenantContext,
+) -> None:
     df = pd.DataFrame(
         {
             "date": pd.date_range("2026-01-01", periods=5, freq="D"),
@@ -218,6 +228,29 @@ def test_generate_business_insights_top3_concentration_with_more_than_three_prod
             "product": ["A", "B", "C", "D", "E"],
         }
     )
-    insights = generate_business_insights(df)
+    insights = generate_business_insights(df, tenant_context=tenant_context)
     # Total = 1000; top 3 (A+B+C) = 900 -> 90%.
     assert insights.top_product_concentration == pytest.approx(90.0)
+
+
+# --------------------------------------------------------------------------
+# Multi-Tenant Sprint 6.3 -- tenant validation on generate_business_insights()
+# --------------------------------------------------------------------------
+
+
+def test_generate_business_insights_without_tenant_context_raises(full_df: pd.DataFrame) -> None:
+    from tenancy.exceptions import MissingTenantContextError
+
+    with pytest.raises(MissingTenantContextError):
+        generate_business_insights(full_df)
+
+
+def test_generate_business_insights_with_inactive_tenant_raises(full_df: pd.DataFrame) -> None:
+    from tenancy.exceptions import InactiveTenantError
+    from tenancy.models import TenantStatus
+
+    inactive_context = TenantContext(
+        tenant=Tenant(tenant_id="inactive-tenant", name="inactive-tenant", display_name="Inactive Co", status=TenantStatus.INACTIVE)
+    )
+    with pytest.raises(InactiveTenantError):
+        generate_business_insights(full_df, tenant_context=inactive_context)

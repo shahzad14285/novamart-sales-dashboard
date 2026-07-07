@@ -44,7 +44,11 @@ from utils.kpi_engine import sales_kpi_engine
 st.set_page_config(**{**PAGE_CONFIG, "page_title": "NovaMart | Dashboard"})
 inject_header_styles()
 
-render_sidebar(active_label="Dashboard")
+# render_sidebar() also renders the Sprint 6.3 tenant selector and
+# returns the TenantContext resolved from it, so every KPI/insights
+# calculation below is scoped to whichever organization is active in
+# this browser session.
+tenant_context = render_sidebar(active_label="Dashboard")
 render_header(title="Dashboard", subtitle="Cross-functional overview of business performance")
 
 st.caption(
@@ -54,13 +58,13 @@ st.caption(
 
 # render_upload_center() returns the cleaned DataFrame for the file
 # currently uploaded (or None if nothing is uploaded / validation
-# failed). Streamlit re-runs this whole script top-to-bottom on every
-# widget interaction -- including a new file being dropped into the
-# uploader or a filter value changing -- so simply recomputing
-# everything below from these return values on every run is what makes
-# the page "automatically refresh": there is no stale state to
-# invalidate and nothing extra to wire up.
-uploaded_df = render_upload_center()
+# failed, including a missing/inactive tenant). Streamlit re-runs this
+# whole script top-to-bottom on every widget interaction -- including a
+# new file being dropped into the uploader or a filter value changing
+# -- so simply recomputing everything below from these return values on
+# every run is what makes the page "automatically refresh": there is no
+# stale state to invalidate and nothing extra to wire up.
+uploaded_df = render_upload_center(tenant_context=tenant_context)
 
 filtered_df = None
 if uploaded_df is not None:
@@ -88,7 +92,7 @@ if filtered_df is None:
 else:
     st.caption("Recalculated automatically from the file uploaded above and any filters applied.")
     try:
-        kpi_results = sales_kpi_engine.calculate_all(filtered_df)
+        kpi_results = sales_kpi_engine.calculate_all(filtered_df, tenant_context=tenant_context)
         render_kpi_cards(kpi_results)
     except Exception as exc:  # noqa: BLE001 - defensive: a KPI bug must never crash the dashboard
         st.error(f"Unable to calculate KPIs for the uploaded file: {exc}", icon="⚠️")
@@ -96,7 +100,7 @@ else:
 if filtered_df is not None:
     st.divider()
     try:
-        render_executive_analytics(filtered_df)
+        render_executive_analytics(filtered_df, tenant_context=tenant_context)
     except Exception as exc:  # noqa: BLE001 - defensive: an analytics bug must never crash the dashboard
         st.error(f"Unable to render executive analytics: {exc}", icon="⚠️")
 

@@ -55,6 +55,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Callable, Mapping
 
+from tenancy.context import TenantContext, validate_tenant_context
 from utils.insights import BusinessInsights
 from utils.kpi_engine import KPIResult
 
@@ -547,13 +548,25 @@ class ReportingService:
     # ------------------------------------------------------------------
     # Public API -- report generation
     # ------------------------------------------------------------------
-    def generate_report(self, report_type: ReportType | str, context: ReportContext) -> Report:
+    def generate_report(
+        self,
+        report_type: ReportType | str,
+        context: ReportContext,
+        *,
+        tenant_context: TenantContext | None = None,
+    ) -> Report:
         """Assemble a :class:`Report` of the requested type from ``context``.
 
         Args:
             report_type: Which report to build, e.g. ``ReportType.EXECUTIVE``
                 or the equivalent string ``"executive"`` (case-insensitive).
             context: The already-computed business data to assemble.
+            tenant_context: The tenant this report is scoped to
+                (Multi-Tenant Sprint 6.3). Required for the call to
+                succeed -- see :func:`~tenancy.context.validate_tenant_context`.
+                Report assembly itself never varies by tenant; this
+                only guarantees every report is attributable to, and
+                gated on, an active tenant.
 
         Returns:
             A fully assembled :class:`Report`. Optional sections whose
@@ -563,6 +576,8 @@ class ReportingService:
             had data.
 
         Raises:
+            MissingTenantContextError: If no tenant context was supplied.
+            InactiveTenantError: If the supplied tenant is not active.
             InvalidReportContextError: If ``context`` isn't a
                 :class:`ReportContext` instance.
             InvalidReportTypeError: If ``report_type`` isn't a
@@ -575,6 +590,8 @@ class ReportingService:
             MissingReportDataError: If a *required* section has no data
                 in ``context``.
         """
+        validate_tenant_context(tenant_context, service_name="ReportingService", operation="generate_report")
+
         if not isinstance(context, ReportContext):
             raise InvalidReportContextError(context)
 

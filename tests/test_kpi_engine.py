@@ -9,6 +9,8 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
+from tenancy.context import TenantContext
+from tenancy.models import Tenant
 from utils.kpi_engine import KPIEngine, KPIResult, sales_kpi_engine
 
 
@@ -24,9 +26,15 @@ def sample_df() -> pd.DataFrame:
     )
 
 
-def test_calculate_all_returns_minimum_required_kpis(sample_df: pd.DataFrame) -> None:
+@pytest.fixture
+def tenant_context() -> TenantContext:
+    """A valid, active TenantContext -- Multi-Tenant Sprint 6.3 requires one for calculate_all()."""
+    return TenantContext(tenant=Tenant(tenant_id="test-tenant", name="test-tenant", display_name="Test Tenant"))
+
+
+def test_calculate_all_returns_minimum_required_kpis(sample_df: pd.DataFrame, tenant_context: TenantContext) -> None:
     engine = KPIEngine()
-    results = engine.calculate_all(sample_df)
+    results = engine.calculate_all(sample_df, tenant_context=tenant_context)
 
     required_keys = {
         "total_revenue",
@@ -69,12 +77,12 @@ def test_total_transactions_kpi_counts_rows(sample_df: pd.DataFrame) -> None:
     assert result.formatted == "4"
 
 
-def test_total_transactions_differs_from_total_orders_when_aggregated() -> None:
+def test_total_transactions_differs_from_total_orders_when_aggregated(tenant_context: TenantContext) -> None:
     # 2 rows (transactions) but "orders" column sums to more than 2,
     # demonstrating the two KPIs are intentionally distinct metrics.
     df = pd.DataFrame({"date": pd.date_range("2026-06-01", periods=2), "revenue": [10.0, 20.0], "orders": [5, 7]})
     engine = KPIEngine()
-    results = engine.calculate_all(df)
+    results = engine.calculate_all(df, tenant_context=tenant_context)
     assert results["total_transactions"].value == 2
     assert results["total_orders"].value == 12
 
@@ -90,23 +98,25 @@ def test_highest_and_lowest_revenue_day_kpis(sample_df: pd.DataFrame) -> None:
     assert "$100.00" in lowest.formatted
 
 
-def test_kpis_degrade_gracefully_on_empty_dataframe() -> None:
+def test_kpis_degrade_gracefully_on_empty_dataframe(tenant_context: TenantContext) -> None:
     engine = KPIEngine()
-    results = engine.calculate_all(pd.DataFrame(columns=["date", "revenue", "orders"]))
+    results = engine.calculate_all(pd.DataFrame(columns=["date", "revenue", "orders"]), tenant_context=tenant_context)
 
     assert results["total_revenue"].value == 0.0
     assert results["highest_revenue_day"].value is None
     assert results["highest_revenue_day"].formatted == "N/A"
 
 
-def test_register_adds_a_new_kpi_without_modifying_engine(sample_df: pd.DataFrame) -> None:
+def test_register_adds_a_new_kpi_without_modifying_engine(
+    sample_df: pd.DataFrame, tenant_context: TenantContext
+) -> None:
     engine = KPIEngine()
 
     def _kpi_row_count(df: pd.DataFrame, date_col: str, revenue_col: str, orders_col: str) -> KPIResult:
         return KPIResult(key="row_count", label="Row Count", value=len(df), formatted=str(len(df)))
 
     engine.register("row_count", _kpi_row_count)
-    results = engine.calculate_all(sample_df)
+    results = engine.calculate_all(sample_df, tenant_context=tenant_context)
 
     assert "row_count" in results
     assert results["row_count"].value == 4
@@ -124,7 +134,7 @@ def test_register_can_override_an_existing_kpi(sample_df: pd.DataFrame) -> None:
     assert result.value == 0.0
 
 
-def test_custom_column_names_are_respected() -> None:
+def test_custom_column_names_are_respected(tenant_context: TenantContext) -> None:
     df = pd.DataFrame(
         {
             "order_date": pd.date_range("2026-01-01", periods=2),
@@ -133,12 +143,37 @@ def test_custom_column_names_are_respected() -> None:
         }
     )
     engine = KPIEngine(date_col="order_date", revenue_col="sales", orders_col="units")
-    results = engine.calculate_all(df)
+    results = engine.calculate_all(df, tenant_context=tenant_context)
 
     assert results["total_revenue"].value == 200.0
     assert results["total_orders"].value == 20
 
 
-def test_shared_sales_kpi_engine_is_preconfigured(sample_df: pd.DataFrame) -> None:
-    results = sales_kpi_engine.calculate_all(sample_df)
+def test_shared_sales_kpi_engine_is_preconfigured(sample_df: pd.DataFrame, tenant_context: TenantContext) -> None:
+    results = sales_kpi_engine.calculate_all(sample_df, tenant_context=tenant_context)
     assert results["total_revenue"].value == 1000.0
+
+
+# --------------------------------------------------------------------------
+# Multi-Tenant Sprint 6.3 -- tenant validation on calculate_all()
+# --------------------------------------------------------------------------
+
+
+def test_calculate_all_without_tenant_context_raises(sample_df: pd.DataFrame) -> None:
+    from tenancy.exceptions import MissingTenantContextError
+
+    engine = KPIEngine()
+    with pytest.raises(MissingTenantContextError):
+        engine.calculate_all(sample_df)
+
+
+def test_calculate_all_with_inactive_tenant_raises(sample_df: pd.DataFrame) -> None:
+    from tenancy.exceptions import InactiveTenantError
+    from tenancy.models import TenantStatus
+
+    inactive_context = TenantContext(
+        tenant=Tenant(tenant_id="inactive-tenant", name="inactive-tenant", display_name="Inactive Co", status=TenantStatus.INACTIVE)
+    )
+    engine = KPIEngine()
+    with pytest.raises(InactiveTenantError):
+        engine.calculate_all(sample_df, tenant_context=inactive_context)

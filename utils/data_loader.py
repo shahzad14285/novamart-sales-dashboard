@@ -38,6 +38,7 @@ import pandas as pd
 import streamlit as st
 
 from config.settings import SAMPLE_SALES_CSV
+from tenancy.context import TenantContext, validate_tenant_context
 from utils.exceptions import (
     DataFileNotFoundError,
     DataReadError,
@@ -199,7 +200,13 @@ class DataLoader:
             return self.load_csv(path)
         raise UnsupportedFileTypeError(path, supported=_EXCEL_EXTENSIONS + _CSV_EXTENSIONS)
 
-    def load_uploaded_file(self, uploaded_file: "UploadedFile | None", sheet_name: int | str = 0) -> pd.DataFrame:
+    def load_uploaded_file(
+        self,
+        uploaded_file: "UploadedFile | None",
+        sheet_name: int | str = 0,
+        *,
+        tenant_context: TenantContext | None = None,
+    ) -> pd.DataFrame:
         """Load a file uploaded through Streamlit's ``st.file_uploader``.
 
         This is the method UI components (such as the Upload Center)
@@ -210,13 +217,26 @@ class DataLoader:
         recreated by Streamlit on every upload (even for a re-upload of
         a same-named file), so there is nothing stable to key a cache
         on, and skipping the cache avoids ever showing stale data from
-        a previous upload.
+        a previous upload. This also means there is no shared cache for
+        tenant data to ever leak through.
+
+        This is the entry point to the tenant-aware pipeline (Upload
+        Center -> Data Loader -> ...), so ``tenant_context`` is
+        validated here, before any file is read (Multi-Tenant Sprint
+        6.3, Task 4): every uploaded-file load is now attributable to a
+        specific, active tenant.
 
         Args:
             uploaded_file: The object returned by ``st.file_uploader``,
                 or ``None`` if the user hasn't uploaded anything yet.
             sheet_name: Sheet to read if the upload is an Excel
                 workbook. Ignored for CSV uploads.
+            tenant_context: The tenant this upload belongs to. Required
+                for the call to succeed; kept keyword-only and optional
+                in the signature (default ``None``) so this remains
+                callable exactly as before syntactically -- omitting it
+                now raises :class:`~tenancy.exceptions.MissingTenantContextError`
+                instead of silently proceeding.
 
         Returns:
             A cleaned, validated pandas DataFrame.
@@ -226,7 +246,11 @@ class DataLoader:
             UnsupportedFileTypeError: If the extension isn't supported.
             MissingColumnsError: If required columns are absent.
             DataReadError: If the file can't be parsed.
+            MissingTenantContextError: If no tenant context was supplied.
+            InactiveTenantError: If the supplied tenant is not active.
         """
+        validate_tenant_context(tenant_context, service_name="DataLoader", operation="load_uploaded_file")
+
         if uploaded_file is None:
             raise NoFileUploadedError()
 

@@ -17,6 +17,8 @@ import pandas as pd
 import streamlit as st
 
 from components.empty_state import render_empty_state
+from tenancy.context import TenantContext
+from tenancy.exceptions import TenantContextError
 from utils.data_loader import DataLoader, sales_data_loader
 from utils.exceptions import DataLoaderError
 from utils.formatting import format_file_size, format_integer
@@ -37,6 +39,7 @@ def render_upload_center(
     title: str = _DEFAULT_TITLE,
     description: str = _DEFAULT_DESCRIPTION,
     key: str = "upload_center",
+    tenant_context: TenantContext | None = None,
 ) -> pd.DataFrame | None:
     """Render a full upload section: file picker, validation, preview.
 
@@ -51,6 +54,13 @@ def render_upload_center(
         description: Short explanatory text shown under the heading.
         key: Unique Streamlit widget key. Pass a distinct value if
             more than one Upload Center is rendered on the same page.
+        tenant_context: The active tenant this upload belongs to
+            (Multi-Tenant Sprint 6.3). Required for a file to actually
+            be loaded -- if missing, inactive, or unresolved, a
+            business-friendly message is shown and ``None`` is
+            returned instead of the exception propagating, consistent
+            with how this component already handles
+            :class:`~utils.exceptions.DataLoaderError`.
 
     Returns:
         The cleaned, validated DataFrame if a file was uploaded and
@@ -67,7 +77,7 @@ def render_upload_center(
 
     st.success(f"File received: **{uploaded_file.name}**", icon="✅")
 
-    dataframe = _load_and_validate(loader, uploaded_file)
+    dataframe = _load_and_validate(loader, uploaded_file, tenant_context=tenant_context)
     if dataframe is None:
         return None
 
@@ -105,23 +115,32 @@ def _render_file_picker(key: str) -> object | None:
     )
 
 
-def _load_and_validate(loader: DataLoader, uploaded_file: object) -> pd.DataFrame | None:
+def _load_and_validate(
+    loader: DataLoader, uploaded_file: object, tenant_context: TenantContext | None = None
+) -> pd.DataFrame | None:
     """Run the uploaded file through the DataLoader, handling failures.
 
     Any :class:`~utils.exceptions.DataLoaderError` (missing file,
     unsupported type, missing columns, unreadable file) is caught here
     and shown as a friendly ``st.error`` message instead of crashing
-    the page with a raw traceback.
+    the page with a raw traceback. A
+    :class:`~tenancy.exceptions.TenantContextError` (missing/inactive
+    tenant) is handled the same way -- its message is already written
+    to be shown as-is, with no technical detail to strip.
 
     Args:
         loader: The configured DataLoader to validate/clean with.
         uploaded_file: The object returned by ``st.file_uploader``.
+        tenant_context: The active tenant this upload belongs to.
 
     Returns:
         The cleaned DataFrame, or ``None`` if validation failed.
     """
     try:
-        return loader.load_uploaded_file(uploaded_file)
+        return loader.load_uploaded_file(uploaded_file, tenant_context=tenant_context)
+    except TenantContextError as exc:
+        st.error(str(exc), icon="🔒")
+        return None
     except DataLoaderError as exc:
         st.error(str(exc), icon="⚠️")
         return None

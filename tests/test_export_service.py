@@ -19,6 +19,8 @@ from services.export_service import (
     UnsupportedExportFormatError,
     sales_export_service,
 )
+from tenancy.context import TenantContext
+from tenancy.models import Tenant
 
 
 @pytest.fixture
@@ -31,6 +33,12 @@ def sample_df() -> pd.DataFrame:
             "product": ["Widget", "Gadget", "Widget"],
         }
     )
+
+
+@pytest.fixture
+def tenant_context() -> TenantContext:
+    """A valid, active TenantContext -- Multi-Tenant Sprint 6.3 requires one for export()."""
+    return TenantContext(tenant=Tenant(tenant_id="test-tenant", name="test-tenant", display_name="Test Tenant"))
 
 
 @pytest.fixture
@@ -181,28 +189,30 @@ def test_export_json_invalid_input_raises() -> None:
 # --------------------------------------------------------------------------
 
 
-def test_export_dispatches_to_csv(sample_df: pd.DataFrame) -> None:
+def test_export_dispatches_to_csv(sample_df: pd.DataFrame, tenant_context: TenantContext) -> None:
     service = ExportService()
-    result = service.export(sample_df, "csv")
+    result = service.export(sample_df, "csv", tenant_context=tenant_context)
     assert result.file_extension == "csv"
 
 
-def test_export_is_case_insensitive_and_trims_whitespace(sample_df: pd.DataFrame) -> None:
+def test_export_is_case_insensitive_and_trims_whitespace(
+    sample_df: pd.DataFrame, tenant_context: TenantContext
+) -> None:
     service = ExportService()
-    result = service.export(sample_df, "  CSV  ")
+    result = service.export(sample_df, "  CSV  ", tenant_context=tenant_context)
     assert result.file_extension == "csv"
 
 
-def test_export_xlsx_and_excel_keys_both_work(sample_df: pd.DataFrame) -> None:
+def test_export_xlsx_and_excel_keys_both_work(sample_df: pd.DataFrame, tenant_context: TenantContext) -> None:
     service = ExportService()
-    assert service.export(sample_df, "excel").file_extension == "xlsx"
-    assert service.export(sample_df, "xlsx").file_extension == "xlsx"
+    assert service.export(sample_df, "excel", tenant_context=tenant_context).file_extension == "xlsx"
+    assert service.export(sample_df, "xlsx", tenant_context=tenant_context).file_extension == "xlsx"
 
 
-def test_export_unsupported_format_raises(sample_df: pd.DataFrame) -> None:
+def test_export_unsupported_format_raises(sample_df: pd.DataFrame, tenant_context: TenantContext) -> None:
     service = ExportService()
     with pytest.raises(UnsupportedExportFormatError):
-        service.export(sample_df, "pdf")
+        service.export(sample_df, "pdf", tenant_context=tenant_context)
 
 
 def test_supported_formats_lists_all_default_formats() -> None:
@@ -210,7 +220,7 @@ def test_supported_formats_lists_all_default_formats() -> None:
     assert set(service.supported_formats()) == {"csv", "excel", "xlsx", "json"}
 
 
-def test_register_adds_a_new_format(sample_df: pd.DataFrame) -> None:
+def test_register_adds_a_new_format(sample_df: pd.DataFrame, tenant_context: TenantContext) -> None:
     service = ExportService()
 
     def _export_xml(df: pd.DataFrame) -> ExportResult:
@@ -223,12 +233,12 @@ def test_register_adds_a_new_format(sample_df: pd.DataFrame) -> None:
     service.register("xml", _export_xml)
 
     assert "xml" in service.supported_formats()
-    result = service.export(sample_df, "xml")
+    result = service.export(sample_df, "xml", tenant_context=tenant_context)
     assert result.file_extension == "xml"
     assert b"<data>" in result.content or b"<row>" in result.content
 
 
-def test_register_can_override_an_existing_format(sample_df: pd.DataFrame) -> None:
+def test_register_can_override_an_existing_format(sample_df: pd.DataFrame, tenant_context: TenantContext) -> None:
     service = ExportService()
     calls = []
 
@@ -237,7 +247,7 @@ def test_register_can_override_an_existing_format(sample_df: pd.DataFrame) -> No
         return ExportResult(content=b"custom", file_extension="csv", mime_type="text/csv")
 
     service.register("csv", _custom_csv)
-    result = service.export(sample_df, "csv")
+    result = service.export(sample_df, "csv", tenant_context=tenant_context)
 
     assert calls == [True]
     assert result.content == b"custom"
@@ -252,6 +262,31 @@ def test_shared_instance_is_an_export_service() -> None:
     assert isinstance(sales_export_service, ExportService)
 
 
-def test_shared_instance_exports_csv(sample_df: pd.DataFrame) -> None:
-    result = sales_export_service.export(sample_df, "csv")
+def test_shared_instance_exports_csv(sample_df: pd.DataFrame, tenant_context: TenantContext) -> None:
+    result = sales_export_service.export(sample_df, "csv", tenant_context=tenant_context)
     assert result.file_extension == "csv"
+
+
+# --------------------------------------------------------------------------
+# Multi-Tenant Sprint 6.3 -- tenant validation on export()
+# --------------------------------------------------------------------------
+
+
+def test_export_without_tenant_context_raises(sample_df: pd.DataFrame) -> None:
+    from tenancy.exceptions import MissingTenantContextError
+
+    service = ExportService()
+    with pytest.raises(MissingTenantContextError):
+        service.export(sample_df, "csv")
+
+
+def test_export_with_inactive_tenant_raises(sample_df: pd.DataFrame) -> None:
+    from tenancy.exceptions import InactiveTenantError
+    from tenancy.models import TenantStatus
+
+    inactive_context = TenantContext(
+        tenant=Tenant(tenant_id="inactive-tenant", name="inactive-tenant", display_name="Inactive Co", status=TenantStatus.INACTIVE)
+    )
+    service = ExportService()
+    with pytest.raises(InactiveTenantError):
+        service.export(sample_df, "csv", tenant_context=inactive_context)

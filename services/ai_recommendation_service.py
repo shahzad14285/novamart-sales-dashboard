@@ -58,6 +58,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING, Callable, Iterable, Mapping, Protocol, runtime_checkable
 
+from tenancy.context import TenantContext, validate_tenant_context
 from utils.formatting import format_currency
 from utils.insights import BusinessInsights
 from utils.kpi_engine import KPIResult
@@ -629,11 +630,19 @@ class AIRecommendationService:
         """The active provider's display name."""
         return self._provider.name
 
-    def generate_recommendations(self, context: RecommendationContext) -> RecommendationBatch:
+    def generate_recommendations(
+        self, context: RecommendationContext, *, tenant_context: TenantContext | None = None
+    ) -> RecommendationBatch:
         """Analyze ``context`` and return a structured batch of recommendations.
 
         Args:
             context: The already-computed business data to analyze.
+            tenant_context: The tenant these recommendations are scoped
+                to (Multi-Tenant Sprint 6.3). Required for the call to
+                succeed -- see :func:`~tenancy.context.validate_tenant_context`.
+                Never passed to the provider itself; recommendation
+                logic never varies by tenant, only which tenant's data
+                it was asked to analyze.
 
         Returns:
             A :class:`RecommendationBatch`. It may be empty (see
@@ -641,11 +650,15 @@ class AIRecommendationService:
             nothing to recommend -- that is not an error.
 
         Raises:
+            MissingTenantContextError: If no tenant context was supplied.
+            InactiveTenantError: If the supplied tenant is not active.
             InvalidRecommendationContextError: If ``context`` isn't a
                 :class:`RecommendationContext` instance.
             RecommendationProviderError: If the active provider raises
                 while generating recommendations.
         """
+        validate_tenant_context(tenant_context, service_name="AIRecommendationService", operation="generate_recommendations")
+
         if not isinstance(context, RecommendationContext):
             raise InvalidRecommendationContextError(context)
 

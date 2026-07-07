@@ -31,6 +31,7 @@ from typing import Callable
 import pandas as pd
 
 from config.constants import KPI_ICONS, KPI_LABELS
+from tenancy.context import TenantContext, validate_tenant_context
 from utils.calculations import (
     calculate_average_order_value,
     calculate_total_orders,
@@ -116,18 +117,31 @@ class KPIEngine:
         """
         self._registry[key] = func
 
-    def calculate_all(self, df: pd.DataFrame) -> dict[str, KPIResult]:
+    def calculate_all(
+        self, df: pd.DataFrame, *, tenant_context: TenantContext | None = None
+    ) -> dict[str, KPIResult]:
         """Compute every registered KPI for ``df``.
 
         Args:
             df: A validated DataFrame, typically returned by
                 :class:`~utils.data_loader.DataLoader`.
+            tenant_context: The tenant this calculation is scoped to
+                (Multi-Tenant Sprint 6.3). Required for the call to
+                succeed -- see :func:`~tenancy.context.validate_tenant_context`.
+                The KPI formulas themselves never change per tenant;
+                this only guarantees every calculation is attributable
+                to, and gated on, an active tenant.
 
         Returns:
             A dict mapping each KPI's key to its :class:`KPIResult`, in
             registration order (default KPIs first, then any KPIs
             registered afterward).
+
+        Raises:
+            MissingTenantContextError: If no tenant context was supplied.
+            InactiveTenantError: If the supplied tenant is not active.
         """
+        validate_tenant_context(tenant_context, service_name="KPIEngine", operation="calculate_all")
         return {
             key: func(df, self.date_col, self.revenue_col, self.orders_col)
             for key, func in self._registry.items()

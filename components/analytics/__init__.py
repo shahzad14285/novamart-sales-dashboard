@@ -25,6 +25,7 @@ from components.analytics.insights import render_business_insights, render_busin
 from components.analytics.products import render_product_analytics
 from components.analytics.regions import render_region_analytics
 from components.analytics.revenue import render_revenue_analytics
+from tenancy.context import TenantContext
 
 __all__ = [
     "render_executive_analytics",
@@ -37,12 +38,17 @@ __all__ = [
 ]
 
 
-def render_executive_analytics(df: pd.DataFrame) -> None:
+def render_executive_analytics(df: pd.DataFrame, *, tenant_context: TenantContext | None = None) -> None:
     """Render the full Executive Analytics layer as a tabbed section.
 
     Args:
         df: The (already filtered) dataset to analyze -- typically the
             DataFrame returned by the Dashboard's filter panel.
+        tenant_context: The active tenant this analytics view is
+            scoped to (Multi-Tenant Sprint 6.3). Only the Business
+            Insights tab currently needs it (the only tab backed by a
+            tenant-aware calculation); the other four tabs are
+            unaffected and receive ``df`` exactly as before.
     """
     st.markdown('<p class="nm-section-title">🧭 Executive Analytics</p>', unsafe_allow_html=True)
 
@@ -53,7 +59,7 @@ def render_executive_analytics(df: pd.DataFrame) -> None:
     with summary_tab:
         render_executive_summary(df)
     with insights_tab:
-        render_business_insights(df)
+        render_business_insights(df, tenant_context=tenant_context)
     with revenue_tab:
         render_revenue_analytics(df)
     with products_tab:

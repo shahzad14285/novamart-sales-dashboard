@@ -28,9 +28,9 @@ from ui.executive_report_center import render_executive_report_center
 st.set_page_config(**{**PAGE_CONFIG, "page_title": "NovaMart | Reports"})
 inject_header_styles()
 
-render_sidebar(active_label="Reports")
+tenant_context = render_sidebar(active_label="Reports")
 render_header(title="Reports", subtitle="Generate, review, and export business reports")
 
-render_executive_report_center()
+render_executive_report_center(tenant_context=tenant_context)
 
 render_footer()
