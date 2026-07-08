@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import streamlit as st
 
+from authorization.context import UserContext
+from components.authorization import is_authorized, render_user_switcher
 from components.tenant_selector import render_tenant_selector
 from config.constants import APP_TAGLINE, COMPANY_NAME, NAV_ITEMS
 from config.settings import APP_ICON
@@ -19,7 +21,7 @@ from tenancy.context import TenantContext
 
 
 def render_sidebar(active_label: str = "Home") -> TenantContext:
-    """Render the shared sidebar: branding, tenant selector, navigation, and info.
+    """Render the shared sidebar: branding, tenant selector, user switcher, navigation, and info.
 
     Args:
         active_label: The label (from ``NAV_ITEMS``) of the currently
@@ -29,7 +31,14 @@ def render_sidebar(active_label: str = "Home") -> TenantContext:
         The :class:`~tenancy.context.TenantContext` resolved from the
         tenant selector for the current session. Existing call sites
         that don't need it can simply ignore the return value, exactly
-        as before this function returned ``None``.
+        as before this function returned ``None``. The resolved
+        :class:`~authorization.context.UserContext` (Sprint 6.5) is
+        deliberately *not* returned here to keep this function's
+        signature backward compatible with every existing call site --
+        a page that needs it calls
+        ``components.authorization.get_active_user_context(tenant_context)``
+        after this function returns, which reads the exact same
+        session-scoped selection this function just resolved.
     """
     with st.sidebar:
         st.markdown(
@@ -47,8 +56,21 @@ def render_sidebar(active_label: str = "Home") -> TenantContext:
         tenant_context = render_tenant_selector()
         st.divider()
 
+        # Sprint 6.5 -- Permission-Based Authorization Framework: resolves
+        # "who is currently signed in" immediately after "which tenant is
+        # active", so the nav filtering below already reflects both.
+        user_context = render_user_switcher(tenant_context)
+        st.divider()
+
         st.markdown('<p class="nm-eyebrow">Navigation</p>', unsafe_allow_html=True)
         for item in NAV_ITEMS:
+            required_permission = item.get("required_permission")
+            if required_permission and not _is_authorized(user_context, required_permission):
+                # Task 9: "Hide unauthorized menu items." -- an item the
+                # current user isn't permitted to use is skipped
+                # entirely, not shown disabled, so the sidebar never
+                # advertises a capability the user cannot reach.
+                continue
             # st.page_link renders a native, clickable nav entry that
             # works across the multipage app without manual routing.
             label = f"{item['icon']}  {item['label']}"
@@ -59,6 +81,23 @@ def render_sidebar(active_label: str = "Home") -> TenantContext:
             )
 
         st.divider()
-        st.caption(f"Signed in as **shahzad.14285@gmail.com**")
+        display_name = user_context.user.display_name if user_context.user else "shahzad.14285@gmail.com"
+        st.caption(f"Signed in as **{display_name}**")
 
     return tenant_context
+
+
+def _is_authorized(user_context: UserContext, permission: str) -> bool:
+    """Check ``permission`` against an already-resolved context (no re-resolution).
+
+    A tiny local wrapper around
+    ``authorization.service.authorization_service.has_permission`` so
+    the navigation loop above doesn't re-resolve the current user (via
+    :func:`components.authorization.is_authorized`) once per nav item --
+    ``user_context`` was already resolved once by
+    :func:`~components.authorization.render_user_switcher` a few lines
+    up.
+    """
+    from authorization.service import authorization_service
+
+    return authorization_service.has_permission(user_context, permission)

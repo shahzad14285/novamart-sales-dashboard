@@ -91,7 +91,10 @@ from datetime import datetime, timezone
 import pandas as pd
 import streamlit as st
 
+from authorization.context import UserContext
+from authorization.permissions import EXPORT_DATA, GENERATE_PDF, GENERATE_REPORTS, USE_AI_RECOMMENDATIONS
 from components.analytics import render_business_insights_from_value
+from components.authorization import get_active_user_context, require_permission_ui
 from components.empty_state import render_empty_state
 from components.filter_panel import render_filter_panel
 from components.kpi_cards import render_kpi_cards
@@ -151,7 +154,10 @@ _PREFERRED_EXPORT_FORMAT_ORDER: tuple[str, ...] = ("csv", "excel", "json")
 
 
 def render_executive_report_center(
-    df: pd.DataFrame | None = None, *, tenant_context: TenantContext | None = None
+    df: pd.DataFrame | None = None,
+    *,
+    tenant_context: TenantContext | None = None,
+    user_context: UserContext | None = None,
 ) -> None:
     """Render the full Executive Report Center screen.
 
@@ -171,8 +177,20 @@ def render_executive_report_center(
             inactive tenant stops the whole screen with a single,
             business-friendly message rather than failing partway
             through one tab.
+        user_context: The current user's already-resolved
+            :class:`~authorization.context.UserContext` (Sprint 6.5).
+            If not given, resolved from the current session via
+            :func:`~components.authorization.get_active_user_context`,
+            mirroring how ``tenant_context`` falls back to
+            self-resolution when not supplied. Each of the four tabs
+            gates its own service call independently (``GENERATE_REPORTS``,
+            ``USE_AI_RECOMMENDATIONS``, ``GENERATE_PDF``, ``EXPORT_DATA``)
+            -- a user missing one capability still sees the tabs they
+            *do* have access to, with a business-friendly "Access
+            Denied" panel in place of the ones they don't.
     """
     tenant_context = tenant_context if tenant_context is not None else get_active_tenant_context()
+    user_context = user_context if user_context is not None else get_active_user_context(tenant_context)
 
     st.markdown('<p class="nm-section-title">📑 Executive Report Center</p>', unsafe_allow_html=True)
     st.markdown(
@@ -203,7 +221,7 @@ def render_executive_report_center(
         operation="render_executive_report_center",
         tenant_context=tenant_context,
     ):
-        working_df = df if df is not None else _acquire_dataset(tenant_context)
+        working_df = df if df is not None else _acquire_dataset(tenant_context, user_context)
         if working_df is None or working_df.empty:
             render_empty_state(
                 "Upload a dataset above to build an executive report, review AI "
@@ -214,6 +232,18 @@ def render_executive_report_center(
 
         st.divider()
         report_type, prepared_for = _render_report_controls()
+
+        # Sprint 6.5 -- Permission-Based Authorization Framework, Task 8:
+        # assembling a report requires GENERATE_REPORTS. Checked before
+        # the Reporting Service is called at all -- without a report
+        # object, none of the four tabs below can render anything
+        # meaningful, so a denial here replaces the whole tabbed area
+        # with one "Access Denied" panel rather than four.
+        if not require_permission_ui(
+            GENERATE_REPORTS, service_name="ReportingService", operation="generate_report",
+            tenant_context=tenant_context, user_context=user_context,
+        ):
+            return
 
         context = _build_report_context(working_df, report_type, prepared_for, tenant_context)
         try:
@@ -228,11 +258,11 @@ def render_executive_report_center(
         with report_tab:
             _render_report_tab(report)
         with recommendations_tab:
-            _render_recommendations_tab(context, report, tenant_context)
+            _render_recommendations_tab(context, report, tenant_context, user_context)
         with pdf_tab:
-            _render_pdf_export_tab(report, row_count=len(working_df), tenant_context=tenant_context)
+            _render_pdf_export_tab(report, row_count=len(working_df), tenant_context=tenant_context, user_context=user_context)
         with export_tab:
-            _render_data_export_tab(working_df, tenant_context)
+            _render_data_export_tab(working_df, tenant_context, user_context)
 
 
 # ==============================================================================
@@ -240,7 +270,7 @@ def render_executive_report_center(
 # ==============================================================================
 
 
-def _acquire_dataset(tenant_context: TenantContext) -> pd.DataFrame | None:
+def _acquire_dataset(tenant_context: TenantContext, user_context: UserContext) -> pd.DataFrame | None:
     """Obtain a filtered dataset via the existing Upload Center + Filter Panel.
 
     Reuses the same two components the Dashboard page already uses,
@@ -250,6 +280,10 @@ def _acquire_dataset(tenant_context: TenantContext) -> pd.DataFrame | None:
 
     Args:
         tenant_context: The active tenant this upload belongs to.
+        user_context: The current user (Sprint 6.5) -- threaded through
+            to :func:`~components.upload_center.render_upload_center`
+            so this screen's own upload path is gated by
+            ``UPLOAD_DATA`` exactly like the Dashboard page's.
 
     Returns:
         The filtered DataFrame, or ``None`` if nothing has been
@@ -260,6 +294,7 @@ def _acquire_dataset(tenant_context: TenantContext) -> pd.DataFrame | None:
         description="Upload the CSV or Excel file this report should be built from.",
         key=_UPLOAD_KEY,
         tenant_context=tenant_context,
+        user_context=user_context,
     )
     if uploaded_df is None:
         return None
@@ -448,8 +483,19 @@ def _render_group_summary(summary: dict[str, float]) -> None:
 # ==============================================================================
 
 
-def _render_recommendations_tab(context: ReportContext, report: Report, tenant_context: TenantContext) -> None:
+def _render_recommendations_tab(
+    context: ReportContext, report: Report, tenant_context: TenantContext, user_context: UserContext
+) -> None:
     """Render AI-generated recommendations built from the same context as the report."""
+    # Sprint 6.5 -- Permission-Based Authorization Framework, Task 8:
+    # viewing AI recommendations requires USE_AI_RECOMMENDATIONS,
+    # checked before the AI Recommendation Service is called.
+    if not require_permission_ui(
+        USE_AI_RECOMMENDATIONS, service_name="AIRecommendationService", operation="generate_recommendations",
+        tenant_context=tenant_context, user_context=user_context,
+    ):
+        return
+
     st.caption(
         "Generated by the AI Recommendation Service from the same KPI results "
         "and business insights used to build the report."
@@ -493,8 +539,19 @@ def _render_recommendation_card(recommendation: Recommendation) -> None:
 # ==============================================================================
 
 
-def _render_pdf_export_tab(report: Report, row_count: int, tenant_context: TenantContext) -> None:
+def _render_pdf_export_tab(
+    report: Report, row_count: int, tenant_context: TenantContext, user_context: UserContext
+) -> None:
     """Render PDF branding options, a Generate button, and the resulting download."""
+    # Sprint 6.5 -- Permission-Based Authorization Framework, Task 8:
+    # generating a PDF requires GENERATE_PDF, checked before the
+    # branding controls and Generate button are even rendered.
+    if not require_permission_ui(
+        GENERATE_PDF, service_name="PDFGeneratorService", operation="generate_pdf",
+        tenant_context=tenant_context, user_context=user_context,
+    ):
+        return
+
     st.caption("Generated by the PDF Generator Service from the report above.")
 
     with st.expander("Branding options"):
@@ -546,8 +603,17 @@ def _render_pdf_export_tab(report: Report, row_count: int, tenant_context: Tenan
 # ==============================================================================
 
 
-def _render_data_export_tab(df: pd.DataFrame, tenant_context: TenantContext) -> None:
+def _render_data_export_tab(df: pd.DataFrame, tenant_context: TenantContext, user_context: UserContext) -> None:
     """Render an export-format selector, an Export button, and the resulting download."""
+    # Sprint 6.5 -- Permission-Based Authorization Framework, Task 8:
+    # exporting data requires EXPORT_DATA, checked before the format
+    # selector and Export button are even rendered.
+    if not require_permission_ui(
+        EXPORT_DATA, service_name="ExportService", operation="export",
+        tenant_context=tenant_context, user_context=user_context,
+    ):
+        return
+
     st.caption("Generated by the Export Service from the filtered dataset used to build the report.")
 
     export_format = st.selectbox(

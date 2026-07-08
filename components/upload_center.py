@@ -16,6 +16,9 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from authorization.context import UserContext
+from authorization.permissions import UPLOAD_DATA
+from components.authorization import get_active_user_context, require_permission_ui
 from components.empty_state import render_empty_state
 from monitoring.service import monitoring_service
 from tenancy.context import TenantContext
@@ -41,6 +44,7 @@ def render_upload_center(
     description: str = _DEFAULT_DESCRIPTION,
     key: str = "upload_center",
     tenant_context: TenantContext | None = None,
+    user_context: UserContext | None = None,
 ) -> pd.DataFrame | None:
     """Render a full upload section: file picker, validation, preview.
 
@@ -62,6 +66,15 @@ def render_upload_center(
             returned instead of the exception propagating, consistent
             with how this component already handles
             :class:`~utils.exceptions.DataLoaderError`.
+        user_context: The current user's already-resolved
+            :class:`~authorization.context.UserContext` (Sprint 6.5),
+            if the caller has one in hand. Defaults to resolving it
+            from the current session. Required to hold ``UPLOAD_DATA``
+            -- if missing, a business-friendly "Access Denied" message
+            is shown in place of the file picker (Task 8/9) and
+            ``None`` is returned, exactly like every other
+            authorization/validation failure this component already
+            handles this way.
 
     Returns:
         The cleaned, validated DataFrame if a file was uploaded and
@@ -70,6 +83,18 @@ def render_upload_center(
     loader = loader or sales_data_loader
 
     _render_header(title, description)
+
+    # Sprint 6.5 -- Permission-Based Authorization Framework, Task 8:
+    # uploading a dataset requires UPLOAD_DATA. Checked before the file
+    # picker widget is even rendered, so an unauthorized user is never
+    # offered an upload control they cannot use (Task 9: "Hide
+    # unauthorized buttons").
+    if not require_permission_ui(
+        UPLOAD_DATA, service_name="UploadCenter", operation="upload",
+        tenant_context=tenant_context, user_context=user_context,
+    ):
+        return None
+
     uploaded_file = _render_file_picker(key)
 
     if uploaded_file is None:

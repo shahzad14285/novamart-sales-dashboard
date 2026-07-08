@@ -12,14 +12,15 @@ from __future__ import annotations
 # --------------------------------------------------------------------------
 # Each entry maps a page's display name to its file path relative to the
 # project root, as required by ``st.page_link`` / ``st.navigation``.
-NAV_ITEMS: list[dict[str, str]] = [
-    {"label": "Home", "path": "app.py", "icon": "🏠"},
-    {"label": "Dashboard", "path": "pages/1_Dashboard.py", "icon": "📊"},
-    {"label": "Sales", "path": "pages/2_Sales.py", "icon": "💰"},
-    {"label": "Products", "path": "pages/3_Products.py", "icon": "📦"},
-    {"label": "Customers", "path": "pages/4_Customers.py", "icon": "🧑‍🤝‍🧑"},
-    {"label": "Reports", "path": "pages/5_Reports.py", "icon": "📑"},
-    {"label": "Monitoring", "path": "pages/6_Monitoring.py", "icon": "🩺"},
+NAV_ITEMS: list[dict[str, str | None]] = [
+    {"label": "Home", "path": "app.py", "icon": "🏠", "required_permission": None},
+    {"label": "Dashboard", "path": "pages/1_Dashboard.py", "icon": "📊", "required_permission": "view_dashboard"},
+    {"label": "Sales", "path": "pages/2_Sales.py", "icon": "💰", "required_permission": None},
+    {"label": "Products", "path": "pages/3_Products.py", "icon": "📦", "required_permission": None},
+    {"label": "Customers", "path": "pages/4_Customers.py", "icon": "🧑‍🤝‍🧑", "required_permission": None},
+    {"label": "Reports", "path": "pages/5_Reports.py", "icon": "📑", "required_permission": "view_reports"},
+    {"label": "Monitoring", "path": "pages/6_Monitoring.py", "icon": "🩺", "required_permission": "view_monitoring"},
+    {"label": "Tenant Configuration", "path": "pages/7_Tenant_Configuration.py", "icon": "🏢", "required_permission": "manage_tenants"},
 ]
 
 # --------------------------------------------------------------------------

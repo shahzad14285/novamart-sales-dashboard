@@ -30,7 +30,9 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 import streamlit as st
 
+from authorization.permissions import VIEW_DASHBOARD
 from components.analytics import render_executive_analytics
+from components.authorization import get_active_user_context, require_permission_ui
 from components.empty_state import render_empty_state
 from components.filter_panel import render_filter_panel
 from components.footer import render_footer
@@ -51,6 +53,18 @@ inject_header_styles()
 tenant_context = render_sidebar(active_label="Dashboard")
 render_header(title="Dashboard", subtitle="Cross-functional overview of business performance")
 
+# Sprint 6.5 -- Permission-Based Authorization Framework, Task 8: the
+# Dashboard requires VIEW_DASHBOARD. Checked once, up front -- an
+# unauthorized user sees a single "Access Denied" panel and nothing
+# below it renders, including the Upload Center.
+user_context = get_active_user_context(tenant_context)
+if not require_permission_ui(
+    VIEW_DASHBOARD, service_name="Dashboard", operation="view",
+    tenant_context=tenant_context, user_context=user_context,
+):
+    render_footer()
+    st.stop()
+
 st.caption(
     "Upload a CSV or Excel file below to calculate live KPIs and analytics "
     "from your own sales data."
@@ -64,7 +78,7 @@ st.caption(
 # -- so simply recomputing everything below from these return values on
 # every run is what makes the page "automatically refresh": there is no
 # stale state to invalidate and nothing extra to wire up.
-uploaded_df = render_upload_center(tenant_context=tenant_context)
+uploaded_df = render_upload_center(tenant_context=tenant_context, user_context=user_context)
 
 filtered_df = None
 if uploaded_df is not None:

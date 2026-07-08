@@ -19,6 +19,8 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 import streamlit as st
 
+from authorization.permissions import VIEW_REPORTS
+from components.authorization import get_active_user_context, require_permission_ui
 from components.footer import render_footer
 from components.header import inject_header_styles, render_header
 from components.sidebar import render_sidebar
@@ -31,6 +33,17 @@ inject_header_styles()
 tenant_context = render_sidebar(active_label="Reports")
 render_header(title="Reports", subtitle="Generate, review, and export business reports")
 
-render_executive_report_center(tenant_context=tenant_context)
+# Sprint 6.5 -- Permission-Based Authorization Framework, Task 8: the
+# Reports page itself requires VIEW_REPORTS just to be entered (defense
+# in depth alongside the sidebar already hiding its nav link). The
+# finer-grained GENERATE_REPORTS / USE_AI_RECOMMENDATIONS / GENERATE_PDF
+# / EXPORT_DATA checks for each individual capability live inside
+# ui.executive_report_center, gating each tab independently.
+user_context = get_active_user_context(tenant_context)
+if require_permission_ui(
+    VIEW_REPORTS, service_name="ReportsPage", operation="view",
+    tenant_context=tenant_context, user_context=user_context,
+):
+    render_executive_report_center(tenant_context=tenant_context, user_context=user_context)
 
 render_footer()
