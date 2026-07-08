@@ -20,6 +20,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 import streamlit as st
 
 from authorization.permissions import VIEW_REPORTS
+from components.auth import require_authentication
 from components.authorization import get_active_user_context, require_permission_ui
 from components.footer import render_footer
 from components.header import inject_header_styles, render_header
@@ -29,6 +30,10 @@ from ui.executive_report_center import render_executive_report_center
 
 st.set_page_config(**{**PAGE_CONFIG, "page_title": "NovaMart | Reports"})
 inject_header_styles()
+
+# Sprint 6.6 -- Identity & Authentication Framework, Task 8: authentication
+# must complete before authorization begins.
+require_authentication()
 
 tenant_context = render_sidebar(active_label="Reports")
 render_header(title="Reports", subtitle="Generate, review, and export business reports")

@@ -20,6 +20,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 import streamlit as st
 
 from authorization.permissions import MANAGE_TENANTS
+from components.auth import require_authentication
 from components.authorization import get_active_user_context, require_permission_ui
 from components.footer import render_footer
 from components.header import inject_header_styles, render_header
@@ -29,6 +30,10 @@ from ui.tenant_configuration import render_tenant_configuration
 
 st.set_page_config(**{**PAGE_CONFIG, "page_title": "NovaMart | Tenant Configuration"})
 inject_header_styles()
+
+# Sprint 6.6 -- Identity & Authentication Framework, Task 8: authentication
+# must complete before authorization begins.
+require_authentication()
 
 tenant_context = render_sidebar(active_label="Tenant Configuration")
 render_header(title="Tenant Configuration", subtitle="Platform-wide tenant and user directory")

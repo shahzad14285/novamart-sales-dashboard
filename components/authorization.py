@@ -1,40 +1,39 @@
 """Authorization UI helper for the NovaMart Permission-Based Authorization Framework.
 
 Sprint 6.5 -- Permission-Based Authorization Framework, Task 9.
+Updated in Sprint 6.6 -- Identity & Authentication Framework, Task 8,
+to source "who is the current user" from a real, authenticated
+identity session instead of a demo picker -- see "Sourcing the active
+user" below.
 
 The one place the UI layer resolves "who is the current user" and
 checks "are they allowed to do this" -- every page and component that
 needs authorization calls into this module rather than importing
 ``authorization.service`` directly, so there is exactly one
-implementation of "how the demo user switcher works" and exactly one
-implementation of what an "Access Denied" message looks like (Task 9:
-"Avoid duplicated authorization checks").
+implementation of that resolution and exactly one implementation of
+what an "Access Denied" message looks like (Task 9: "Avoid duplicated
+authorization checks").
 
-Why ``st.session_state``, not a module-level global
-------------------------------------------------------
-The same reasoning ``components/tenant_selector.py`` documents applies
-here unchanged: a Streamlit server process serves multiple browser
-sessions concurrently from the same Python process, so a module-level
-"current user" would leak one session's identity into another's
-request. ``st.session_state`` is keyed per browser session by
-Streamlit itself, so storing the selection there is what actually
-gives each concurrent user their own isolated identity.
-
-A stand-in for real authentication
--------------------------------------
-There is no real login in this release -- the Target Architecture in
-``docs/AUTHORIZATION_ARCHITECTURE.md`` explicitly marks "Authentication"
-as a future integration point. Until then, :func:`render_user_switcher`
-lets the person running the demo pick "who they currently are" from the
-directory seeded by ``config/users.py``, exactly the same stand-in role
-``components/tenant_selector.py`` already plays for "which organization
-is active" in the absence of real multi-tenant request routing. When
-real authentication arrives, only :func:`get_active_user_context`'s
-*implementation* needs to change (resolving a verified session/token
-into a user id instead of reading a selectbox) -- its signature, and
+Sourcing the active user (Sprint 6.6)
+-------------------------------------------
+Prior to Sprint 6.6, this module owned its own "Signed In As (Demo)"
+selectbox and session-state key, standing in for real authentication.
+Now that ``identity/`` provides real sign-in and session validation,
+:func:`get_active_user_context` resolves ``user_id`` from the current
+browser session's authenticated identity
+(``identity.service.authentication_service.get_current_user``) instead.
+This is a deliberately narrow, surgical change: the
+:class:`~authorization.service.AuthorizationService` this module wraps,
+the :class:`~authorization.context.UserContext` type it returns, and
 every one of the dozens of call sites using
 :func:`is_authorized`/:func:`require_permission_ui` elsewhere in the
-app, stays exactly the same.
+app are completely unchanged -- only *where the user id comes from*
+was updated, keeping the identity and authorization packages
+themselves fully decoupled (this module is the one place, at the UI
+layer, allowed to bridge them -- see
+``docs/IDENTITY_ARCHITECTURE.md``'s "Authentication vs Authorization"
+section). The demo selectbox is gone; the "which user" question is
+now answered by an actual login (``components/auth.py``).
 """
 
 from __future__ import annotations
@@ -47,87 +46,55 @@ import config.users  # noqa: F401
 from authorization.context import UserContext
 from authorization.exceptions import AuthorizationError
 from authorization.permissions import permission_registry
-from authorization.registry import authorization_provider_registry
 from authorization.service import authorization_service
+from identity.exceptions import AuthenticationError
+from identity.service import authentication_service
 from tenancy.context import TenantContext
-
-_SESSION_KEY = "novamart_active_user_id"
-
-
-def render_user_switcher(tenant_context: TenantContext | None = None) -> UserContext:
-    """Render the demo user picker and return the resolved :class:`UserContext`.
-
-    Intended to be called once per page, from
-    :func:`~components.sidebar.render_sidebar` (already invoked by
-    every page) immediately after the tenant selector, so no page needs
-    to render this a second time and every downstream check reads a
-    context resolved against the currently-selected tenant.
-
-    Args:
-        tenant_context: The currently active tenant, used to resolve
-            tenant isolation (a non-platform-wide user selected while a
-            different tenant is active is shown a warning and treated
-            as having no permissions, rather than crashing the sidebar
-            -- see :func:`get_active_user_context`).
-
-    Returns:
-        A :class:`~authorization.context.UserContext` bound to
-        whichever user is currently selected in this browser session,
-        or an empty context if no user is configured or the selection
-        is invalid for the active tenant.
-    """
-    provider = authorization_provider_registry.get_active()
-    all_users = provider.list_users()
-
-    st.markdown('<p class="nm-eyebrow">Signed In As (Demo)</p>', unsafe_allow_html=True)
-
-    if not all_users:
-        st.info("No demo users are configured.", icon="👤")
-        return UserContext.empty()
-
-    options = [user.user_id for user in all_users]
-    labels = {user.user_id: user.display_name for user in all_users}
-
-    previous_selection = st.session_state.get(_SESSION_KEY)
-    default_index = options.index(previous_selection) if previous_selection in options else 0
-
-    selected_id = st.selectbox(
-        "User",
-        options=options,
-        index=default_index,
-        format_func=lambda user_id: labels[user_id],
-        key="novamart_user_selectbox",
-        label_visibility="collapsed",
-        help="Stands in for real sign-in until authentication is integrated. "
-        "Every menu item, button, and page you can access is scoped to this user's role.",
-    )
-    st.session_state[_SESSION_KEY] = selected_id
-
-    return _resolve_user_context(selected_id, tenant_context, show_errors=True)
 
 
 def get_active_user_context(tenant_context: TenantContext | None = None) -> UserContext:
-    """Return the current session's active :class:`UserContext` without re-rendering the picker.
+    """Return the current session's active :class:`UserContext`.
 
-    Useful for a component or page that needs the resolved user but
-    isn't the one responsible for drawing the selectbox (which
-    :func:`~components.sidebar.render_sidebar` already does once per
-    page) -- mirrors
-    ``components.tenant_selector.get_active_tenant_context``.
+    Resolves the signed-in identity from the current browser session
+    (via ``identity.service.authentication_service``, using the
+    session id ``components/auth.py`` stores in ``st.session_state``),
+    then resolves that identity's ``user_id`` into a
+    :class:`~authorization.context.UserContext` exactly as before
+    Sprint 6.6 -- see the module docstring's "Sourcing the active user"
+    section.
+
+    Safe to call many times per page render (it performs a cheap,
+    non-recording session read, not a full re-authentication) --
+    mirrors ``components.tenant_selector.get_active_tenant_context``.
 
     Args:
         tenant_context: The currently active tenant, used to resolve
-            tenant isolation exactly as :func:`render_user_switcher` does.
+            tenant isolation (a user signed in while a different
+            tenant is active is treated as having no permissions,
+            rather than crashing the page -- see
+            :func:`_resolve_user_context`).
 
     Returns:
         The active :class:`~authorization.context.UserContext` for this
-        session, or an empty context if nothing has been selected yet
-        or the selection is invalid.
+        session, or an empty context if nobody is signed in, the
+        session has expired, or the resolved user isn't authorized for
+        the active tenant.
     """
-    selected_id = st.session_state.get(_SESSION_KEY)
-    if not selected_id:
+    # Deferred import: components.auth needs get_active_user_context
+    # (this function) to display a role on its user panel, and this
+    # function needs components.auth's session id getter -- a genuine
+    # two-way relationship between two same-tier UI modules. Deferring
+    # both sides' imports to call time avoids a module-load-time
+    # circular import; see components/auth.py::render_user_panel for
+    # the matching deferred import on the other side.
+    from components.auth import get_current_session_id
+
+    session_id = get_current_session_id()
+    try:
+        identity = authentication_service.get_current_user(session_id)
+    except AuthenticationError:
         return UserContext.empty()
-    return _resolve_user_context(selected_id, tenant_context, show_errors=False)
+    return _resolve_user_context(identity.user_id, tenant_context, show_errors=False)
 
 
 def _resolve_user_context(
@@ -143,14 +110,16 @@ def _resolve_user_context(
     check fail closed and show its own business-friendly message.
 
     Args:
-        user_id: The user id to resolve.
+        user_id: The user id to resolve (already authenticated by the
+            identity layer by the time this is called).
         tenant_context: The currently active tenant.
         show_errors: Whether to render an inline ``st.warning`` when
-            resolution fails (``True`` from the switcher itself, so the
-            person driving the demo sees *why* nothing is authorized;
-            ``False`` from :func:`get_active_user_context`, so the same
-            warning isn't duplicated on every component that merely
-            reads the already-resolved context).
+            resolution fails. Currently always called with ``False``
+            (the sole remaining call site, :func:`get_active_user_context`,
+            may run many times per render) -- kept as a parameter
+            rather than removed so a future single "resolved once per
+            page" call site can opt back into surfacing the warning,
+            without changing this function's signature.
 
     Returns:
         The resolved context, or an empty one on any failure.

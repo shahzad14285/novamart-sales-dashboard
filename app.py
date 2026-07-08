@@ -14,6 +14,7 @@ from __future__ import annotations
 import plotly.express as px
 import streamlit as st
 
+from components.auth import require_authentication
 from components.footer import render_footer
 from components.header import inject_header_styles, render_header
 from components.sidebar import render_sidebar
@@ -129,6 +130,11 @@ def render_chart_section() -> None:
 def main() -> None:
     """Compose and render the NovaMart home page."""
     configure_page()
+    # Sprint 6.6 -- Identity & Authentication Framework, Task 8:
+    # authentication must complete before anything else renders,
+    # including the sidebar (which itself performs authorization
+    # checks to filter navigation).
+    require_authentication()
     render_sidebar(active_label="Home")
     render_header(title=f"{COMPANY_NAME} Dashboard", subtitle=APP_TAGLINE)
 

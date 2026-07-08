@@ -13,6 +13,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 import streamlit as st
 
+from components.auth import require_authentication
 from components.footer import render_footer
 from components.header import inject_header_styles, render_header
 from components.sidebar import render_sidebar
@@ -21,6 +22,10 @@ from config.settings import PAGE_CONFIG
 
 st.set_page_config(**{**PAGE_CONFIG, "page_title": "NovaMart | Customers"})
 inject_header_styles()
+
+# Sprint 6.6 -- Identity & Authentication Framework, Task 8: authentication
+# must complete before authorization begins.
+require_authentication()
 
 render_sidebar(active_label="Customers")
 render_header(title="Customers", subtitle="Segmentation, retention, and lifetime value")

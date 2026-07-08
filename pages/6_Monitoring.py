@@ -24,6 +24,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 import streamlit as st
 
 from authorization.permissions import VIEW_MONITORING
+from components.auth import require_authentication
 from components.authorization import get_active_user_context, require_permission_ui
 from components.footer import render_footer
 from components.header import inject_header_styles, render_header
@@ -33,6 +34,10 @@ from ui.monitoring_dashboard import render_monitoring_dashboard
 
 st.set_page_config(**{**PAGE_CONFIG, "page_title": "NovaMart | Monitoring"})
 inject_header_styles()
+
+# Sprint 6.6 -- Identity & Authentication Framework, Task 8: authentication
+# must complete before authorization begins.
+require_authentication()
 
 tenant_context = render_sidebar(active_label="Monitoring")
 render_header(title="Monitoring", subtitle="Operational health, performance, and tenant activity across the platform")

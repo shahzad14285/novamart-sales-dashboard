@@ -32,6 +32,7 @@ import streamlit as st
 
 from authorization.permissions import VIEW_DASHBOARD
 from components.analytics import render_executive_analytics
+from components.auth import require_authentication
 from components.authorization import get_active_user_context, require_permission_ui
 from components.empty_state import render_empty_state
 from components.filter_panel import render_filter_panel
@@ -45,6 +46,11 @@ from utils.kpi_engine import sales_kpi_engine
 
 st.set_page_config(**{**PAGE_CONFIG, "page_title": "NovaMart | Dashboard"})
 inject_header_styles()
+
+# Sprint 6.6 -- Identity & Authentication Framework, Task 8: authentication
+# must complete before authorization begins -- checked before the sidebar
+# (which itself performs authorization checks) even renders.
+require_authentication()
 
 # render_sidebar() also renders the Sprint 6.3 tenant selector and
 # returns the TenantContext resolved from it, so every KPI/insights
