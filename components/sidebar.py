@@ -31,11 +31,21 @@ import config.automation_setup  # noqa: F401
 # against the shared endpoint registry -- see that module's
 # docstring). Mirrors config.automation_setup immediately above.
 import config.integration_setup  # noqa: F401
+
+# Sprint 6.9 -- Production Readiness Platform: imported for its side
+# effect only (registers configuration providers, platform health
+# checks, and readiness checks -- see that module's docstring). Also
+# supplies feature_flag_for_nav_label(), used below to additionally
+# gate the Monitoring/Automation/Integrations nav entries on their
+# feature flag, on top of the existing permission check.
+import config.production_setup  # noqa: F401
 from components.auth import render_user_panel
 from components.authorization import is_authorized
 from components.tenant_selector import render_tenant_selector
 from config.constants import APP_TAGLINE, COMPANY_NAME, NAV_ITEMS
+from config.production_setup import feature_flag_for_nav_label
 from config.settings import APP_ICON
+from configuration.feature_flags import feature_flag_service
 from tenancy.context import TenantContext
 
 
@@ -97,6 +107,15 @@ def render_sidebar(active_label: str = "Home") -> TenantContext:
                 # an item the current user isn't permitted to use is
                 # skipped entirely, not shown disabled, so the sidebar
                 # never advertises a capability the user cannot reach.
+                continue
+            # Sprint 6.9 -- Production Readiness Platform, Task 8: a
+            # dashboard-style page can additionally be gated by a
+            # feature flag (Monitoring/Automation/Integrations), purely
+            # additive on top of the permission check above -- every
+            # flag defaults to enabled, so this changes nothing unless
+            # an administrator explicitly disables one.
+            flag_key = feature_flag_for_nav_label(item["label"])
+            if flag_key and not feature_flag_service.is_enabled(flag_key):
                 continue
             # st.page_link renders a native, clickable nav entry that
             # works across the multipage app without manual routing.

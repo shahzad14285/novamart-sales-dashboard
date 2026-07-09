@@ -23,6 +23,7 @@ NAV_ITEMS: list[dict[str, str | None]] = [
     {"label": "Tenant Configuration", "path": "pages/7_Tenant_Configuration.py", "icon": "🏢", "required_permission": "manage_tenants"},
     {"label": "Automation", "path": "pages/8_Automation.py", "icon": "🤖", "required_permission": "view_automation"},
     {"label": "Integrations", "path": "pages/9_Integration.py", "icon": "🔌", "required_permission": "view_integrations"},
+    {"label": "Operations", "path": "pages/10_Operations.py", "icon": "⚙️", "required_permission": "manage_platform"},
 ]
 
 # --------------------------------------------------------------------------
