@@ -58,6 +58,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING, Callable, Iterable, Mapping, Protocol, runtime_checkable
 
+from automation.models import EventType
+from automation.service import automation_service
 from monitoring.service import monitoring_service
 from tenancy.context import TenantContext, validate_tenant_context
 from utils.formatting import format_currency
@@ -680,11 +682,22 @@ class AIRecommendationService:
             except Exception as exc:  # noqa: BLE001 - re-raised as a domain exception below
                 raise RecommendationProviderError(self.provider_name, exc) from exc
 
-            return RecommendationBatch(
+            batch = RecommendationBatch(
                 recommendations=tuple(recommendations),
                 provider_name=self.provider_name,
                 generated_at=datetime.now(timezone.utc),
             )
+
+            # Sprint 6.7 -- Automation & Notification Platform, Task 8:
+            # announce that AI analysis completed. Purely additive,
+            # mirrors the ReportingService.generate_report integration.
+            automation_service.publish(
+                EventType.AI_ANALYSIS_COMPLETED,
+                source_service="AIRecommendationService",
+                payload={"recommendation_count": len(batch.recommendations), "provider_name": self.provider_name},
+                tenant_context=tenant_context,
+            )
+            return batch
 
     @staticmethod
     def _validate_provider(provider: object) -> None:

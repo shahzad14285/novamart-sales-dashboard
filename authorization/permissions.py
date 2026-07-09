@@ -44,6 +44,7 @@ GENERATE_PDF = "generate_pdf"
 USE_AI_RECOMMENDATIONS = "use_ai_recommendations"
 UPLOAD_DATA = "upload_data"
 VIEW_MONITORING = "view_monitoring"
+VIEW_AUTOMATION = "view_automation"
 MANAGE_USERS = "manage_users"
 MANAGE_TENANTS = "manage_tenants"
 MANAGE_PLATFORM = "manage_platform"
@@ -165,6 +166,7 @@ DEFAULT_PERMISSIONS: tuple[Permission, ...] = (
     Permission(USE_AI_RECOMMENDATIONS, "View AI-generated business recommendations."),
     Permission(UPLOAD_DATA, "Upload a new sales dataset."),
     Permission(VIEW_MONITORING, "View the platform's operational health and monitoring dashboard."),
+    Permission(VIEW_AUTOMATION, "View the platform's automation events, scheduled jobs, and notification history."),
     Permission(MANAGE_USERS, "Create, update, or deactivate user accounts."),
     Permission(MANAGE_TENANTS, "View and manage tenant (organization) configuration."),
     Permission(MANAGE_PLATFORM, "Full platform administration, including all other permissions."),

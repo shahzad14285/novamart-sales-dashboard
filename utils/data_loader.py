@@ -37,6 +37,8 @@ from typing import TYPE_CHECKING, Final
 import pandas as pd
 import streamlit as st
 
+from automation.models import EventType
+from automation.service import automation_service
 from config.settings import SAMPLE_SALES_CSV
 from monitoring.service import monitoring_service
 from tenancy.context import TenantContext, validate_tenant_context
@@ -282,7 +284,7 @@ class DataLoader:
                     filename, ValueError("Multiple sheets were returned; specify a single sheet_name.")
                 )
 
-            return self._finalize(
+            cleaned = self._finalize(
                 df,
                 required_columns=self.required_columns,
                 date_columns=self.date_columns,
@@ -290,6 +292,20 @@ class DataLoader:
                 fill_text=self.fill_text,
                 source=filename,
             )
+
+            # Sprint 6.7 -- Automation & Notification Platform, Task 8:
+            # announce that a dataset was uploaded. Purely additive
+            # instrumentation around the (unchanged) load/clean pipeline
+            # above -- DataLoader never learns whether anything consumed
+            # this event, exactly like its monitoring call above never
+            # learns how or where that event was stored.
+            automation_service.publish(
+                EventType.DATA_UPLOADED,
+                source_service="DataLoader",
+                payload={"filename": filename, "row_count": len(cleaned)},
+                tenant_context=tenant_context,
+            )
+            return cleaned
 
     # ------------------------------------------------------------------
     # Internal helpers (shared with the module-level cached loader below)

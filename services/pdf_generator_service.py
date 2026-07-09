@@ -97,6 +97,8 @@ from reportlab.platypus import (
 )
 from reportlab.platypus.tableofcontents import TableOfContents
 
+from automation.models import EventType
+from automation.service import automation_service
 from monitoring.service import monitoring_service
 from services.reporting_service import Report, ReportSection
 from tenancy.context import TenantContext, validate_tenant_context
@@ -659,7 +661,18 @@ class PDFGeneratorService:
             except Exception as exc:  # noqa: BLE001 -- deliberately wrapped, see PDFRenderingError
                 raise PDFRenderingError("document", exc) from exc
 
-            return PDFResult(content=buffer.getvalue(), page_count=doc.page)
+            result = PDFResult(content=buffer.getvalue(), page_count=doc.page)
+
+            # Sprint 6.7 -- Automation & Notification Platform, Task 8:
+            # announce that a PDF was generated. Purely additive, mirrors
+            # the ReportingService.generate_report integration.
+            automation_service.publish(
+                EventType.PDF_GENERATED,
+                source_service="PDFGeneratorService",
+                payload={"page_count": result.page_count},
+                tenant_context=tenant_context,
+            )
+            return result
 
     # ------------------------------------------------------------------
     # Internal helpers

@@ -27,6 +27,7 @@ from authorization.permissions import (
     MANAGE_USERS,
     UPLOAD_DATA,
     USE_AI_RECOMMENDATIONS,
+    VIEW_AUTOMATION,
     VIEW_DASHBOARD,
     VIEW_REPORTS,
 )
@@ -179,6 +180,7 @@ DEFAULT_ROLES: tuple[Role, ...] = (
                 GENERATE_PDF,
                 EXPORT_DATA,
                 USE_AI_RECOMMENDATIONS,
+                VIEW_AUTOMATION,
             }
         ),
         description="Manages their own organization's configuration, users, and reporting.",

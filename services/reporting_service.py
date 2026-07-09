@@ -55,6 +55,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Callable, Mapping
 
+from automation.models import EventType
+from automation.service import automation_service
 from monitoring.service import monitoring_service
 from tenancy.context import TenantContext, validate_tenant_context
 from utils.insights import BusinessInsights
@@ -629,7 +631,21 @@ class ReportingService:
                 sections.append(replace(section, order=len(sections)))
 
             metadata = context.metadata or _default_metadata(resolved_type)
-            return Report(report_type=resolved_type, metadata=metadata, sections=tuple(sections))
+            report = Report(report_type=resolved_type, metadata=metadata, sections=tuple(sections))
+
+            # Sprint 6.7 -- Automation & Notification Platform, Task 8:
+            # announce that a report was generated. This is purely
+            # additive instrumentation around the (unchanged) assembly
+            # above -- ReportingService never learns whether anything
+            # consumed this event, exactly like its monitoring call
+            # above never learns how or where that event was stored.
+            automation_service.publish(
+                EventType.REPORT_GENERATED,
+                source_service="ReportingService",
+                payload={"report_type": key, "section_count": len(report.sections)},
+                tenant_context=tenant_context,
+            )
+            return report
 
     # ------------------------------------------------------------------
     # Internal helpers

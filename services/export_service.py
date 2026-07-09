@@ -32,6 +32,8 @@ from typing import Callable
 
 import pandas as pd
 
+from automation.models import EventType
+from automation.service import automation_service
 from monitoring.service import monitoring_service
 from tenancy.context import TenantContext, validate_tenant_context
 
@@ -225,7 +227,18 @@ class ExportService:
             exporter = self._registry.get(key)
             if exporter is None:
                 raise UnsupportedExportFormatError(export_format, tuple(self._registry.keys()))
-            return exporter(df)
+            result = exporter(df)
+
+            # Sprint 6.7 -- Automation & Notification Platform, Task 8:
+            # announce that an export completed. Purely additive, mirrors
+            # the ReportingService.generate_report integration.
+            automation_service.publish(
+                EventType.EXPORT_COMPLETED,
+                source_service="ExportService",
+                payload={"export_format": key, "row_count": len(df)},
+                tenant_context=tenant_context,
+            )
+            return result
 
     def supported_formats(self) -> tuple[str, ...]:
         """Return every export format key currently registered.

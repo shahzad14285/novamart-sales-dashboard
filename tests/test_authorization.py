@@ -805,4 +805,9 @@ def test_default_roles_and_permissions_tuples_are_not_mutated_by_registry_use(se
     through one test's registry never mutates the shared declarative
     data other tests (and the real application) also read from."""
     assert len(DEFAULT_ROLES) == 4
-    assert len(DEFAULT_PERMISSIONS) == 11
+    # Sprint 6.7 -- Automation & Notification Platform, Task 10 added a
+    # 12th permission (VIEW_AUTOMATION) for the new Automation Dashboard,
+    # mirroring exactly how VIEW_MONITORING was added in a prior sprint.
+    # This assertion is intentionally updated to track that count, not
+    # a sign that DEFAULT_PERMISSIONS is being mutated.
+    assert len(DEFAULT_PERMISSIONS) == 12

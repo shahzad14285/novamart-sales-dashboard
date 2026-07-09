@@ -16,6 +16,15 @@ from __future__ import annotations
 import streamlit as st
 
 from authorization.context import UserContext
+
+# Sprint 6.7 -- Automation & Notification Platform: imported for its
+# side effect only (wires NotificationService.handle_event in as an
+# AutomationService handler, and registers this sprint's demo scheduled
+# jobs -- see that module's docstring). components/sidebar.py is
+# imported by every page before any business service can be called,
+# mirroring exactly how components/auth.py already imports
+# config.credentials for the identical reason.
+import config.automation_setup  # noqa: F401
 from components.auth import render_user_panel
 from components.authorization import is_authorized
 from components.tenant_selector import render_tenant_selector

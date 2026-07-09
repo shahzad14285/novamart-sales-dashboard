@@ -53,6 +53,8 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
+from automation.models import EventType
+from automation.service import automation_service
 from identity.exceptions import (
     InactiveIdentityError,
     InvalidCredentialsError,
@@ -166,13 +168,16 @@ class AuthenticationService:
             identity = self.authenticate(username, password)
         except InvalidCredentialsError as exc:
             self._record(outcome="FAILED", operation="sign_in", user_id=None, reason=exc.reason)
+            self._publish_automation_event(EventType.LOGIN_FAILED, user_id=None, reason=exc.reason)
             raise
         except InactiveIdentityError as exc:
             self._record(outcome="FAILED", operation="sign_in", user_id=exc.user_id, reason="inactive account")
+            self._publish_automation_event(EventType.LOGIN_FAILED, user_id=exc.user_id, reason="inactive account")
             raise
 
         session = self._session_manager.create_session(identity.user_id)
         self._record(outcome="SUCCESS", operation="sign_in", user_id=identity.user_id, reason=None)
+        self._publish_automation_event(EventType.LOGIN_SUCCESS, user_id=identity.user_id, reason=None)
         return AuthenticationResult(
             status=LoginStatus.SUCCESS,
             identity=identity,
@@ -196,6 +201,7 @@ class AuthenticationService:
         self._session_manager.destroy_session(session_id)
         if session is not None:
             self._record(outcome="SUCCESS", operation="sign_out", user_id=session.user_id, reason=None)
+            self._publish_automation_event(EventType.USER_LOGOUT, user_id=session.user_id, reason=None)
 
     # ------------------------------------------------------------------
     # Session validation -- Task 3 ("validate sessions", "refresh sessions")
@@ -375,6 +381,33 @@ class AuthenticationService:
                 error=f"{operation} failed ({reason})",
                 metadata=metadata,
             )
+
+    def _publish_automation_event(self, event_type: EventType, *, user_id: str | None, reason: str | None) -> None:
+        """Announce a sign-in/sign-out occurrence to the Automation Platform (Sprint 6.7, Task 8).
+
+        Purely additive instrumentation, mirroring how :meth:`_record`
+        already reports the same occurrence to monitoring -- this
+        method never affects the outcome of :meth:`sign_in` /
+        :meth:`sign_out`, and :class:`~automation.service.AutomationService.publish`
+        itself never raises back into a caller (see
+        ``docs/AUTOMATION_ARCHITECTURE.md``). ``identity`` importing
+        ``automation`` here does not compromise the Sprint 6.6
+        "Authentication must remain completely separated from
+        Authorization" guarantee -- that guarantee is specifically
+        about the ``authorization`` package, which this module still
+        never imports (see the structural test in
+        ``tests/test_identity.py``).
+
+        Args:
+            event_type: Which automation event to publish.
+            user_id: The affected identity's id, if known.
+            reason: A short machine-readable reason, if this event
+                represents a failure.
+        """
+        payload: dict[str, object] = {}
+        if reason is not None:
+            payload["reason"] = reason
+        automation_service.publish(event_type, source_service=_SERVICE_NAME, payload=payload, user_id=user_id)
 
 
 def _utc_now() -> datetime:

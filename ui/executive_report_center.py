@@ -109,6 +109,7 @@ from services.ai_recommendation_service import (
     sales_ai_recommendation_service,
 )
 from services.export_service import ExportServiceError, sales_export_service
+from services.kpi_threshold_watcher import check_kpi_thresholds
 from services.pdf_generator_service import PDFBrandingConfig, PDFGeneratorServiceError, sales_pdf_generator_service
 from services.reporting_service import (
     Report,
@@ -371,6 +372,13 @@ def _build_report_context(
     """
     kpi_results = sales_kpi_engine.calculate_all(df, tenant_context=tenant_context)
     business_insights = generate_business_insights(df, tenant_context=tenant_context)
+
+    # Sprint 6.7 -- Automation & Notification Platform, Task 8 / Business
+    # Goal: "Notify executives when KPIs fall below thresholds." Purely
+    # additive -- reads the already-computed kpi_results above without
+    # recalculating anything, and never affects what this function
+    # returns; see services/kpi_threshold_watcher.py.
+    check_kpi_thresholds(kpi_results, tenant_context=tenant_context)
 
     available = detect_available_filters(df, columns={"product": "product", "region": "region"})
     regional_summary = calculate_revenue_by_group(df, "region") if available["region"].available else None
