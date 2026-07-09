@@ -25,6 +25,12 @@ from authorization.context import UserContext
 # mirroring exactly how components/auth.py already imports
 # config.credentials for the identical reason.
 import config.automation_setup  # noqa: F401
+
+# Sprint 6.8 -- Integration Platform & API Gateway: imported for its
+# side effect only (registers this sprint's demo API Gateway endpoints
+# against the shared endpoint registry -- see that module's
+# docstring). Mirrors config.automation_setup immediately above.
+import config.integration_setup  # noqa: F401
 from components.auth import render_user_panel
 from components.authorization import is_authorized
 from components.tenant_selector import render_tenant_selector

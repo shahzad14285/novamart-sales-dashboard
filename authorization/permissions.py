@@ -45,6 +45,7 @@ USE_AI_RECOMMENDATIONS = "use_ai_recommendations"
 UPLOAD_DATA = "upload_data"
 VIEW_MONITORING = "view_monitoring"
 VIEW_AUTOMATION = "view_automation"
+VIEW_INTEGRATIONS = "view_integrations"
 MANAGE_USERS = "manage_users"
 MANAGE_TENANTS = "manage_tenants"
 MANAGE_PLATFORM = "manage_platform"
@@ -152,11 +153,11 @@ class PermissionRegistry:
         self._permissions.clear()
 
 
-# The eleven permissions this sprint's ticket calls out by name (Task 3).
-# Adding a twelfth later is one new Permission(...) entry here (or a
-# `permission_registry.register(...)` call from anywhere else, such as a
-# future `config/permissions.py`) -- never a change to any business
-# service, which never references this tuple directly.
+# The permissions this sprint's ticket (and prior sprints') calls out by
+# name (Task 3). Adding another later is one new Permission(...) entry
+# here (or a `permission_registry.register(...)` call from anywhere
+# else, such as a future `config/permissions.py`) -- never a change to
+# any business service, which never references this tuple directly.
 DEFAULT_PERMISSIONS: tuple[Permission, ...] = (
     Permission(VIEW_DASHBOARD, "View the sales dashboard, KPIs, and executive analytics."),
     Permission(VIEW_REPORTS, "View an assembled executive report."),
@@ -167,6 +168,7 @@ DEFAULT_PERMISSIONS: tuple[Permission, ...] = (
     Permission(UPLOAD_DATA, "Upload a new sales dataset."),
     Permission(VIEW_MONITORING, "View the platform's operational health and monitoring dashboard."),
     Permission(VIEW_AUTOMATION, "View the platform's automation events, scheduled jobs, and notification history."),
+    Permission(VIEW_INTEGRATIONS, "View the platform's Integration Platform & API Gateway administration screen."),
     Permission(MANAGE_USERS, "Create, update, or deactivate user accounts."),
     Permission(MANAGE_TENANTS, "View and manage tenant (organization) configuration."),
     Permission(MANAGE_PLATFORM, "Full platform administration, including all other permissions."),
