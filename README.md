@@ -393,29 +393,54 @@ The long-term objective is to evolve NovaMart into a production-ready business i
 
 ## 🤖 AI-Assisted Development
 
-NovaMart is developed using a modern AI-assisted engineering workflow.
+NovaMart is developed using a structured AI-assisted solution development workflow that combines business requirements, solution planning, AI-assisted implementation, testing, review, refinement, documentation, and version control.
 
-Development combines:
+The development workflow includes:
 
-- ChatGPT
-- Claude Code
-- Git
-- GitHub
-- Manual Testing
-- Modular Software Architecture
+**Business Requirements**
+↓
+**Solution Planning & Architecture**
+↓
+**ChatGPT — Prompt Engineering, Planning & Development Guidance**
+↓
+**Claude — AI-Assisted Implementation & Refinement**
+↓
+**Manual Testing & Validation**
+↓
+**Review & Iterative Refinement**
+↓
+**Documentation**
+↓
+**Git & GitHub — Version Control & Release Management**
 
-Every feature is planned, implemented, tested, documented and version-controlled.
+### AI-Assisted Development Approach
+
+The project uses AI tools as development assistants within a structured workflow.
+
+* **ChatGPT** is used for problem analysis, solution planning, prompt engineering, generating structured implementation instructions, exploring approaches, and supporting troubleshooting.
+* **Claude** is used to assist with implementation, building solution components, troubleshooting, and iterative refinement.
+* The resulting implementation is then **manually tested, reviewed, validated, and refined** to identify issues and improve functionality.
+* **Git and GitHub** are used for version control, project management, and release tracking.
+* The solution is organized using a **modular architecture** to support maintainability and future expansion.
+
+The overall approach is:
+
+> **AI-assisted development + human-led testing, validation, review, and refinement**
+
+This project demonstrates a practical approach to using modern AI tools to accelerate solution development while maintaining structured testing, quality review, documentation, and version control.
 
 ---
 
 ## 👨‍💻 Author
 
-**Shahzad**
+**Shahzad Ali**
 
-Portfolio Project — Business Intelligence Dashboard
+AI Solution Architect | AI-Assisted Solution Development | AI & Business Solutions | Data & Business Analytics
+
+NovaMart is a portfolio project demonstrating practical experience in business intelligence, analytics, solution design, AI-assisted development, testing, and iterative solution refinement.
 
 ---
 
 ## 📄 License
 
-This project is intended for educational and portfolio purposes
+This project is intended for educational, learning, and professional portfolio demonstration purposes.
