@@ -252,31 +252,33 @@ The overall workflow is:
 
 ---
 
-## 🚀 Installation
+## 🚀 Installation & Setup
 
-Clone the repository
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/shahzad14285/novamart-sales-dashboard.git
 ```
 
-Move into the project
+### 2. Move into the Project Directory
 
 ```bash
 cd novamart-sales-dashboard
 ```
 
-Install dependencies
+### 3. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Run the application
+### 4. Run the Application
 
 ```bash
 streamlit run app.py
 ```
+
+Once the application starts, open the local Streamlit URL displayed in your terminal to access the NovaMart Sales Intelligence Dashboard.
 
 ---
 
