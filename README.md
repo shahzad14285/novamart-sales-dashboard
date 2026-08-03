@@ -204,18 +204,41 @@ NovaMart_Sales_Dashboard/
 
 ![Business Insights](assets/screenshots/business-insights.png)
 
-## ⚙ Technology Stack
+## 🛠️ Technology Stack
 
-| Category | Technology |
-|-----------|------------|
-| Language | Python |
-| Framework | Streamlit |
-| Visualization | Plotly |
-| Data Processing | Pandas |
-| Excel Support | OpenPyXL |
-| Testing | Pytest |
-| Version Control | Git |
-| Repository | GitHub |
+### Application & Dashboard
+
+* **Python** — Application and data processing layer
+* **Streamlit** — Interactive web application and dashboard framework
+* **Plotly** — Interactive data visualization
+
+### Data & Analytics
+
+* **Pandas** — Data manipulation and analytical processing
+* **CSV / Excel** — Primary data input formats
+
+### Development & Version Control
+
+* **Git** — Version control
+* **GitHub** — Repository management, collaboration, and release tracking
+
+### AI-Assisted Development
+
+* **ChatGPT** — Used for solution planning, prompt engineering, problem analysis, implementation guidance, and generating structured development instructions
+* **Claude** — Used to assist with implementation, development, troubleshooting, and iterative refinement
+
+### Creative & Supporting AI Tools
+
+* **Canva** — Visual design and presentation workflows
+* **ElevenLabs** — AI-assisted voice and audio workflows
+
+### Development Approach
+
+The project follows an **AI-assisted development workflow** in which AI tools support planning and implementation while the solution is subsequently tested, reviewed, validated, and refined through an iterative process.
+
+The overall workflow is:
+
+**Business Requirements → Solution Design → Prompt Engineering → AI-Assisted Implementation → Testing → Review → Refinement → Documentation → Release**
 
 ---
 
