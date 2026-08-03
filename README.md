@@ -89,9 +89,11 @@ The project also demonstrates the use of AI-assisted development workflows, wher
 
 ---
 
-## 🏗 Architecture
+## 🏗️ Solution Architecture
 
-```
+The NovaMart Sales Intelligence Dashboard follows a structured, layered architecture designed to separate data ingestion, processing, analytics, and business insight generation.
+
+```text
 CSV / Excel
       │
       ▼
@@ -113,6 +115,34 @@ KPIs      Executive Analytics
                      ▼
              Business Insights
 ```
+
+### Architecture Flow
+
+**1. Data Sources**
+CSV and Excel files serve as the primary data inputs for the dashboard.
+
+**2. Upload Center**
+Provides the entry point for users to upload and introduce business data into the solution.
+
+**3. DataLoader**
+Handles the loading and preparation of uploaded data for downstream processing and analysis.
+
+**4. Filtering Engine**
+Supports data filtering and focused analysis based on relevant business dimensions.
+
+**5. Analytics Layer**
+Processes the available data to generate analytical outputs and performance metrics.
+
+**6. KPI Layer**
+Transforms analytical results into key performance indicators that help monitor business performance.
+
+**7. Executive Analytics**
+Presents higher-level analytical views designed to support management-level understanding of business performance.
+
+**8. Business Insights**
+Translates analytical outputs into meaningful business insights to support informed decision-making.
+
+This architecture reflects the project's focus on creating a structured path from **raw business data → analytics → KPIs → executive understanding → actionable business insights**.
 
 ---
 
