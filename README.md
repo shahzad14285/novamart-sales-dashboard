@@ -313,23 +313,33 @@ NovaMart automatically detects optional columns and enables related analytics dy
 
 ---
 
-## 🧪 Testing
+## 🧪 Testing & Quality Assurance
 
-NovaMart includes both automated and manual testing.
+NovaMart follows a combination of **automated and manual testing** to validate core functionality, analytical outputs, and user-facing behavior.
 
-### Automated
+### Automated Testing
 
-- Data Loader Tests
-- Filter Engine Tests
-- Analytics Tests
-- Business Insights Tests
+Automated tests cover key solution components, including:
 
-### Manual
+* **Data Loader Tests** — Validate data loading and preparation functionality.
+* **Filter Engine Tests** — Validate filtering logic and data selection behavior.
+* **Analytics Tests** — Validate analytical processing and calculated outputs.
+* **Business Insights Tests** — Validate business insight generation and related analytical functionality.
 
-- Upload Validation
-- KPI Verification
-- Filter Testing
-- Regression Testing
+### Manual Testing
+
+Manual testing is used to validate end-to-end functionality and user-facing behavior, including:
+
+* **Upload Validation** — Verifying data upload functionality and input handling.
+* **KPI Verification** — Reviewing and validating KPI calculations and displayed results.
+* **Filter Testing** — Confirming that interactive filters produce the expected analytical results.
+* **Regression Testing** — Rechecking existing functionality after changes and enhancements to help ensure that previously working features continue to operate as expected.
+
+The testing process is part of an iterative development workflow:
+
+**Implement → Test → Review → Identify Issues → Refine → Retest**
+
+This approach supports continuous improvement and helps maintain the reliability and consistency of the solution as development progresses.
 
 ---
 
