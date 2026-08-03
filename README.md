@@ -342,46 +342,52 @@ The testing process is part of an iterative development workflow:
 This approach supports continuous improvement and helps maintain the reliability and consistency of the solution as development progresses.
 
 ---
-
 ## 📈 Current Development Progress
 
-| Sprint | Status |
-|----------|--------|
-| Project Planning | ✅ |
-| Architecture | ✅ |
-| Foundation | ✅ |
-| Upload Center | ✅ |
-| Dynamic KPIs | ✅ |
-| Interactive Filters | ✅ |
-| Executive Analytics | ✅ |
-| Business Insights | ✅ |
-| Export Center | 🔄 |
-| Performance Optimization | 🔄 |
-| Deployment | ⏳ |
+| Development Area         | Status         |
+| ------------------------ | -------------- |
+| Project Planning         | ✅ Completed    |
+| Solution Architecture    | ✅ Completed    |
+| Foundation               | ✅ Completed    |
+| Upload Center            | ✅ Completed    |
+| Dynamic KPIs             | ✅ Completed    |
+| Interactive Filters      | ✅ Completed    |
+| Executive Analytics      | ✅ Completed    |
+| Business Insights        | ✅ Completed    |
+| Export Center            | 🔄 In Progress |
+| Performance Optimization | 🔄 In Progress |
+| Deployment               | ⏳ Planned      |
 
----
+### 🏷️ Release History
 
-## 🛣 Roadmap
+* **v0.1.0** — Foundation and initial project structure
+* **v0.2.0** — Core dashboard functionality and analytics
+* **v0.3.0** — Interactive dashboard enhancements
+* **v0.4.0** — Advanced analytics and business insight capabilities
+* **v0.5.0** — Current development milestone
 
-### Version 0.3
+The project has progressed through **Sprint 6.9**, with multiple structured development sprints and Git-based releases completed through **v0.5.0**.
 
-- Export Center
-- Excel Export
-- CSV Export
+### 🛣️ Roadmap
 
-### Version 0.4
+#### Next Development Priorities
 
-- Performance Improvements
-- UI Polish
-- Better Caching
+* Complete Export Center functionality
+* Continue Performance Optimization
+* Further UI and usability improvements
+* Continue testing and refinement
+* Prepare the solution for deployment
 
-### Version 0.5
+#### Future Direction
 
-- Cloud Deployment
+* Cloud Deployment
+* Production-readiness improvements
+* Further scalability and performance enhancements
+* Additional business intelligence capabilities
 
-### Version 1.0
+### 🎯 Long-Term Vision
 
-Production-ready Business Intelligence Dashboard
+The long-term objective is to evolve NovaMart into a production-ready business intelligence solution that demonstrates how business requirements, analytics, interactive visualization, AI-assisted development, and structured solution architecture can come together to support data-driven decision-making.
 
 ---
 
