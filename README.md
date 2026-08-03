@@ -1,6 +1,6 @@
 # 📊 NovaMart Sales Dashboard
 
-> **A professional Business Intelligence Dashboard built with Python, Streamlit and Plotly.**
+> **An AI-assisted Sales Intelligence Dashboard designed to transform business data into interactive analytics, KPIs, executive insights, and actionable decision support.**
 
 NovaMart transforms raw sales data into interactive dashboards, executive analytics and business insights through a clean, modular and scalable architecture.
 
