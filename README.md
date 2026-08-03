@@ -6,8 +6,6 @@ NovaMart transforms raw sales data into interactive dashboards, executive analyt
 
 ---
 
-## 🚀 Project Overview
-
 ## 📌 Project Overview
 
 NovaMart Sales Intelligence Dashboard is an AI-assisted business intelligence solution designed to transform sales data into interactive analytics, key performance indicators (KPIs), visual insights, and actionable decision support.
