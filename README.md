@@ -33,40 +33,59 @@ The project also demonstrates the use of AI-assisted development workflows, wher
 
 ---
 
-## ✨ Features
+## ✨ Key Features
 
-### 📂 Data Management
+### 📊 Sales Performance Analytics
 
-- ✅ CSV Upload
-- ✅ Excel Upload
-- ✅ Automatic Data Validation
-- ✅ Error Handling
-- ✅ Missing Value Processing
+* Interactive analysis of overall sales performance
+* KPI-driven business performance monitoring
+* Visual exploration of sales trends and patterns
 
-### 📊 Analytics
+### 📈 Interactive Dashboards
 
-- ✅ Dynamic KPI Engine
-- ✅ Executive Analytics
-- ✅ Revenue Analysis
-- ✅ Product Analysis
-- ✅ Regional Analysis
-- ✅ Business Insights
+* Interactive visual dashboards for exploring business and sales data
+* Dynamic filtering and data exploration
+* Clear visual presentation of key business metrics and insights
 
-### 🎛 Interactive Dashboard
+### 🛍️ Product & Category Analysis
 
-- ✅ Global Filters
-- ✅ Dynamic Charts
-- ✅ Responsive KPI Cards
-- ✅ Real-time Updates
+* Analysis of product-level performance
+* Category-level performance analysis
+* Identification of high- and low-performing areas
 
-### 🏗 Software Engineering
+### 🌍 Business Performance Analysis
 
-- ✅ Modular Architecture
-- ✅ Reusable Components
-- ✅ Separation of Concerns
-- ✅ Automated Testing
-- ✅ Git Version Control
-- ✅ AI-assisted Development Workflow
+* Analysis across relevant business dimensions
+* Comparative performance evaluation
+* Identification of trends, patterns, and areas requiring attention
+
+### 🎯 Decision Support
+
+* Converts analytical findings into actionable business insights
+* Supports data-driven decision-making
+* Helps stakeholders identify opportunities and performance gaps
+
+### 🤖 AI-Assisted Development
+
+* AI-assisted solution planning and development
+* Structured prompt engineering and implementation workflows
+* AI-assisted troubleshooting and iterative refinement
+* Human-led testing, validation, review, and quality improvement
+
+### 🧪 Testing & Quality Assurance
+
+* Functional testing of implemented features
+* Iterative testing and refinement throughout development
+* Validation of outputs and user-facing functionality
+* Continuous improvement based on testing results and review
+
+### 📚 Documentation & Version Control
+
+* Structured project documentation
+* Architecture and solution documentation
+* Git-based version control
+* GitHub-based project management and release workflow
+
 
 ---
 
