@@ -8,9 +8,30 @@ NovaMart transforms raw sales data into interactive dashboards, executive analyt
 
 ## 🚀 Project Overview
 
-NovaMart is a portfolio-grade Business Intelligence application designed to demonstrate professional software engineering practices while delivering meaningful sales analytics.
+## 📌 Project Overview
 
-Users can upload CSV or Excel files and instantly explore their business through dynamic KPIs, interactive filters, executive analytics and automated business insights.
+NovaMart Sales Intelligence Dashboard is an AI-assisted business intelligence solution designed to transform sales data into interactive analytics, key performance indicators (KPIs), visual insights, and actionable decision support.
+
+The project demonstrates an end-to-end approach to developing a practical business intelligence solution, combining business requirements, solution architecture, data analytics, interactive visualization, AI-assisted development, testing, iterative refinement, and structured documentation.
+
+The solution is designed to help business stakeholders:
+
+* Monitor overall sales performance and key business KPIs
+* Analyze sales trends and performance over time
+* Explore product and category performance
+* Evaluate regional and other business dimensions
+* Identify patterns and areas requiring attention
+* Interact with data through dashboards and visual analytics
+* Support more informed, data-driven business decisions
+
+The project is being developed as a flagship portfolio initiative demonstrating how business understanding, analytics, AI-assisted development, and structured solution design can be combined to create a practical business intelligence solution.
+
+The development process follows a structured lifecycle:
+
+**Business Requirements → Solution Architecture → AI-Assisted Development → Testing & Validation → Iterative Refinement → Documentation → Release**
+
+The project also demonstrates the use of AI-assisted development workflows, where AI tools are used to support solution planning, implementation, troubleshooting, and refinement, followed by human-led testing, review, validation, and continuous improvement.
+
 
 ---
 
