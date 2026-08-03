@@ -148,29 +148,39 @@ This architecture reflects the project's focus on creating a structured path fro
 
 ## 📁 Project Structure
 
-```
+```text
 NovaMart_Sales_Dashboard/
-
-├── assets/
-├── components/
-│   ├── analytics/
-│   ├── footer.py
-│   ├── header.py
-│   ├── kpi_cards.py
-│   ├── sidebar.py
-│   └── upload_center.py
 │
-├── config/
-├── data/
-├── docs/
-├── pages/
-├── tests/
-├── utils/
+├── assets/                 # Static assets and supporting visual resources
 │
-├── app.py
-├── requirements.txt
-└── README.md
+├── components/             # Reusable application components
+│   ├── analytics/          # Analytics-related components and functionality
+│   ├── footer.py           # Application footer
+│   ├── header.py           # Application header
+│   ├── kpi_cards.py        # KPI card components
+│   ├── sidebar.py          # Sidebar and navigation components
+│   └── upload_center.py    # Data upload interface and functionality
+│
+├── config/                 # Application configuration
+│
+├── data/                   # Data files and data-related resources
+│
+├── docs/                   # Project and solution documentation
+│
+├── pages/                  # Dashboard pages and application views
+│
+├── tests/                  # Testing and quality assurance resources
+│
+├── utils/                  # Shared utility functions and supporting modules
+│
+├── app.py                  # Main application entry point
+├── requirements.txt        # Python dependencies
+└── README.md               # Project documentation
 ```
+
+The project structure follows a modular organization that separates reusable components, analytics functionality, configuration, data resources, documentation, dashboard pages, testing, and utility modules.
+
+This structure supports maintainability, iterative development, testing, and future expansion of the solution.
 
 ---
 
